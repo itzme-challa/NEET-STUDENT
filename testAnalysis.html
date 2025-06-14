@@ -3,52 +3,63 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Test Analysis</title>
-  <link rel="stylesheet" href="styles.css">
+  <title>Test Analysis - Study Tracker</title>
   <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/49.2.0/firebase-database.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-firestore.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+  <link rel="stylesheet" href="styles.css">
 </head>
-<body>
-  <nav class="navbar">
-    <div class="logo">Study Tracker</div>
-    <div class="nav-links">
-      <a href="index.html">Home</a>
-      <a href="practice.html">Practice</a>
-      <a href="testAnalysis.html" class="active">Test Analysis</a>
-      <a href="plan.html">Plan</a>
-      <a href="track.html">Track</a>
-      <a href="profile.html" id="profileLink">Profile</a>
+<body class="bg-gray-100 font-sans">
+  <nav class="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-4 shadow-lg">
+    <div class="container mx-auto flex justify-between items-center">
+      <div class="text-2xl font-bold">Study Tracker</div>
+      <div class="hidden md:flex space-x-6 nav-links">
+        <a href="index.html" class="hover:text-blue-200">Home</a>
+        <a href="practice.html" class="hover:text-blue-200">Practice</a>
+        <a href="testAnalysis.html" class="active hover:text-blue-200">Test Analysis</a>
+        <a href="plan.html" class="hover:text-blue-200">Plan</a>
+        <a href="track.html" class="hover:text-blue-200">Track</a>
+        <a href="profile.html" id="profileLink" class="hover:text-blue-200">Profile</a>
+      </div>
+      <div class="md:hidden hamburger cursor-pointer text-2xl">☰</div>
     </div>
-    <div class="hamburger">☰</div>
+    <div class="nav-links-mobile md:hidden hidden flex-col bg-blue-700 p-4 space-y-2">
+      <a href="index.html" class="hover:text-blue-200">Home</a>
+      <a href="practice.html" class="hover:text-blue-200">Practice</a>
+      <a href="testAnalysis.html" class="active hover:text-blue-200">Test Analysis</a>
+      <a href="plan.html" class="hover:text-blue-200">Plan</a>
+      <a href="track.html" class="hover:text-blue-200">Track</a>
+      <a href="profile.html" id="profileLinkMobile" class="hover:text-blue-200">Profile</a>
+    </div>
   </nav>
-  <div class="container">
-    <h1>Test Analysis</h1>
-    <form id="testForm">
-      <input type="text" id="testName" placeholder="Test Name" required>
-      <input type="testDate" id="testDate" required>
-      <input type="number" id="attemptedQuestions" placeholder="Questions Attempted" required>
-      <input type="number" id="correct" placeholder="Correct Answers" required>
-      <input type="number" id="wrong" placeholder="wrong Answers" required>
-      <input type="number" id="missed" placeholder="Missed Questions" required>
-      <textarea id="testMistakes" placeholder="Mistakes Noted (Optional)"></textarea>
-      <button type="submit">Save Test</button>
+  <div class="container mx-auto p-6 max-w-5xl">
+    <h1 class="text-3xl font-semibold text-gray-800 mb-6">Test Analysis</h1>
+    <form id="testForm" class="bg-white p-6 rounded-lg shadow-md space-y-4">
+      <input type="text" id="testName" placeholder="Test Name" class="w-full p-2 border rounded-md" required>
+      <input type="date" id="testDate" class="w-full p-2 border rounded-md" required>
+      <input type="number" id="attemptedQuestions" placeholder="Questions Attempted" class="w-full p-2 border rounded-md" required>
+      <input type="number" id="correct" placeholder="Correct Answers" class="w-full p-2 border rounded-md" required>
+      <input type="number" id="wrong" placeholder="Wrong Answers" class="w-full p-2 border rounded-md" required>
+      <input type="number" id="missed" placeholder="Missed Questions" class="w-full p-2 border rounded-md" required>
+      <textarea id="testMistakes" placeholder="Mistakes Noted (Optional)" class="w-full p-2 border rounded-md"></textarea>
+      <button type="submit" class="bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700">Save Test</button>
     </form>
-    <h2>Your Tests</h2>
-    <div id="testList"></div>
-    <div id="message"></div>
+    <h2 class="text-2xl font-semibold mt-6 mb-4">Your Tests</h2>
+    <div id="testList" class="space-y-4 max-h-96 overflow-y-auto"></div>
+    <div id="message" class="mt-4 text-center"></div>
   </div>
-</div>
-  <footer class="bottom-nav">
-    <a href="index.html">Home</a>
-    <a href="practice.html">Practice</a>
-    <a href="testAnalysis.html">Test Analysis</a>
-    <a href="plan.html">Plan</a>
-    <a href="track.html">Track</a>
-    <a href="profile.html">Profile</a>
+  <footer class="bg-gray-800 text-white p-4 fixed bottom-0 w-full md:hidden">
+    <div class="container mx-auto flex justify-around">
+      <a href="index.html" class="hover:text-blue-200">Home</a>
+      <a href="practice.html" class="hover:text-blue-200">Practice</a>
+      <a href="testAnalysis.html" class="hover:text-blue-200">Test Analysis</a>
+      <a href="plan.html" class="hover:text-blue-200">Plan</a>
+      <a href="track.html" class="hover:text-blue-200">Track</a>
+      <a href="profile.html" class="hover:text-blue-200">Profile</a>
+    </div>
   </footer>
-</div>
   <script src="script.js"></script>
 </body>
 </html>
