@@ -216,40 +216,43 @@ function initDashboard() {
 
 function initPracticePage() {
   const practiceType = document.getElementById('practiceType');
-  const chapterSelection = document.getElementById('chapterSelection');
+  const subjectSelectionWrapper = document.getElementById('subjectSelectionWrapper');
   const singleChapterSelection = document.getElementById('singleChapterSelection');
   const multipleChapterSelection = document.getElementById('multipleChapterSelection');
   const subjectSelect = document.getElementById('subject');
   const savePracticeBtn = document.getElementById('savePractice');
-  
+
   // Set today's date as default
   document.getElementById('date').valueAsDate = new Date();
-  
-  // Practice type change handler
+
   practiceType.addEventListener('change', () => {
     const value = practiceType.value;
     
-    chapterSelection.style.display = ['chapter', 'multiple'].includes(value) ? 'block' : 'none';
+    // Show/hide sections based on selection
+    subjectSelectionWrapper.style.display = ['chapter', 'multiple', 'subject'].includes(value) ? 'block' : 'none';
     singleChapterSelection.style.display = value === 'chapter' ? 'block' : 'none';
     multipleChapterSelection.style.display = value === 'multiple' ? 'block' : 'none';
     
-    if (value === '') {
-      chapterSelection.style.display = 'none';
+    // Clear previous selections
+    if (value !== 'chapter') document.getElementById('chapter').value = '';
+    if (value !== 'multiple') {
+      const checkboxes = document.querySelectorAll('#chaptersChecklist input[type="checkbox"]');
+      checkboxes.forEach(checkbox => checkbox.checked = false);
     }
+    if (!['chapter', 'multiple', 'subject'].includes(value)) subjectSelect.value = '';
   });
-  
-  // Subject change handler
+
   subjectSelect.addEventListener('change', () => {
     const subject = subjectSelect.value;
+    const practiceTypeValue = practiceType.value;
     
-    if (practiceType.value === 'chapter') {
+    if (practiceTypeValue === 'chapter') {
       loadChaptersForSubject(subject, 'chapter');
-    } else if (practiceType.value === 'multiple') {
+    } else if (practiceTypeValue === 'multiple') {
       loadChaptersChecklist(subject);
     }
   });
-  
-  // Save practice session
+
   if (savePracticeBtn) {
     savePracticeBtn.addEventListener('click', async () => {
       if (!currentUser) {
@@ -257,36 +260,82 @@ function initPracticePage() {
         return;
       }
       
+      // Validate inputs
+      const questionsAttempted = parseInt(document.getElementById('questionsAttempted').value) || 0;
+      const correct = parseInt(document.getElementById('correct').value) || 0;
+      const incorrect = parseInt(document.getElementById('incorrect').value) || 0;
+      const missed = parseInt(document.getElementById('missed').value) || 0;
+      
+      if (questionsAttempted === 0) {
+        alert('Please enter the number of questions attempted');
+        return;
+      }
+      
+      if ((correct + incorrect + missed) > questionsAttempted) {
+        alert('The sum of correct, incorrect and missed questions cannot exceed total questions attempted');
+        return;
+      }
+      
       const practiceData = {
         type: practiceType.value,
         date: document.getElementById('date').value,
-        questionsAttempted: document.getElementById('questionsAttempted').value,
-        correct: document.getElementById('correct').value,
-        incorrect: document.getElementById('incorrect').value,
-        missed: document.getElementById('missed').value,
-        mistakes: document.getElementById('mistakes').value,
+        questionsAttempted: questionsAttempted,
+        correct: correct,
+        incorrect: incorrect,
+        missed: missed,
+        mistakes: document.getElementById('mistakes').value || '',
         createdAt: new Date().toISOString()
       };
       
-      if (practiceType.value === 'chapter') {
-        practiceData.subject = subjectSelect.value;
-        practiceData.chapter = document.getElementById('chapter').value;
-      } else if (practiceType.value === 'multiple') {
-        practiceData.subject = subjectSelect.value;
-        const checkedChapters = Array.from(document.querySelectorAll('#chaptersChecklist input:checked')).map(el => el.value);
-        practiceData.chapters = checkedChapters;
-      } else if (practiceType.value === 'subject') {
-        practiceData.subject = subjectSelect.value;
+      // Add subject/chapter data based on type
+      switch(practiceType.value) {
+        case 'chapter':
+          practiceData.subject = subjectSelect.value;
+          practiceData.chapter = document.getElementById('chapter').value;
+          if (!practiceData.chapter) {
+            alert('Please select a chapter');
+            return;
+          }
+          break;
+          
+        case 'multiple':
+          practiceData.subject = subjectSelect.value;
+          const checkedChapters = Array.from(
+            document.querySelectorAll('#chaptersChecklist input:checked')
+          ).map(el => el.value);
+          practiceData.chapters = checkedChapters;
+          if (checkedChapters.length === 0) {
+            alert('Please select at least one chapter');
+            return;
+          }
+          break;
+          
+        case 'subject':
+          practiceData.subject = subjectSelect.value;
+          if (!practiceData.subject) {
+            alert('Please select a subject');
+            return;
+          }
+          break;
+          
+        case 'syllabus':
+          // No additional data needed
+          break;
+          
+        default:
+          alert('Please select a practice type');
+          return;
       }
       
       try {
         const newPracticeRef = push(ref(database, `users/${currentUser.uid}/practiceSessions`));
         await set(newPracticeRef, practiceData);
         alert('Practice session saved successfully!');
+        resetPracticeForm();
         loadPracticeHistory();
       } catch (error) {
         console.error('Error saving practice session:', error);
-        alert('Failed to save practice session');
+        alert('Failed to save practice session: ' + error.message);
       }
     });
   }
@@ -298,9 +347,39 @@ function initPracticePage() {
   }
 }
 
+function resetPracticeForm() {
+  document.getElementById('practiceType').value = '';
+  document.getElementById('subjectSelectionWrapper').style.display = 'none';
+  document.getElementById('singleChapterSelection').style.display = 'none';
+  document.getElementById('multipleChapterSelection').style.display = 'none';
+  document.getElementById('subject').value = '';
+  document.getElementById('chapter').value = '';
+  document.querySelectorAll('#chaptersChecklist input[type="checkbox"]').forEach(checkbox => {
+    checkbox.checked = false;
+  });
+  document.getElementById('questionsAttempted').value = '';
+  document.getElementById('correct').value = '';
+  document.getElementById('incorrect').value = '';
+  document.getElementById('missed').value = '';
+  document.getElementById('mistakes').value = '';
+}
 function initTestAnalysisPage() {
   // Set today's date as default
   document.getElementById('testDate').valueAsDate = new Date();
+  
+  const testSubject = document.getElementById('testSubject');
+  const testChapterSelection = document.getElementById('testChapterSelection');
+  
+  // Show/hide chapter selection based on subject
+  testSubject.addEventListener('change', () => {
+    const subject = testSubject.value;
+    if (subject && subject !== 'full') {
+      testChapterSelection.style.display = 'block';
+      loadChaptersChecklistForTest(subject);
+    } else {
+      testChapterSelection.style.display = 'none';
+    }
+  });
   
   // Calculate score when inputs change
   const inputs = ['testCorrect', 'testIncorrect', 'testMissed', 'totalQuestions'];
@@ -317,39 +396,127 @@ function initTestAnalysisPage() {
         return;
       }
       
+      const testName = document.getElementById('testName').value.trim();
+      const testDate = document.getElementById('testDate').value;
+      const testSubjectValue = document.getElementById('testSubject').value;
+      const totalQuestions = parseInt(document.getElementById('totalQuestions').value) || 0;
       const correct = parseInt(document.getElementById('testCorrect').value) || 0;
       const incorrect = parseInt(document.getElementById('testIncorrect').value) || 0;
       const missed = parseInt(document.getElementById('testMissed').value) || 0;
-      const total = parseInt(document.getElementById('totalQuestions').value) || 0;
+      
+      // Validation
+      if (!testName) {
+        alert('Please enter test name');
+        return;
+      }
+      
+      if (!testDate) {
+        alert('Please select test date');
+        return;
+      }
+      
+      if (!testSubjectValue) {
+        alert('Please select subject');
+        return;
+      }
+      
+      if (totalQuestions <= 0) {
+        alert('Please enter total number of questions');
+        return;
+      }
+      
+      if ((correct + incorrect + missed) > totalQuestions) {
+        alert('The sum of correct, incorrect and missed questions cannot exceed total questions');
+        return;
+      }
       
       const testData = {
-        name: document.getElementById('testName').value,
-        date: document.getElementById('testDate').value,
-        subject: document.getElementById('testSubject').value,
-        totalQuestions: total,
+        name: testName,
+        date: testDate,
+        subject: testSubjectValue,
+        totalQuestions: totalQuestions,
         correct: correct,
         incorrect: incorrect,
         missed: missed,
         score: (correct * 4) - (incorrect * 1),
-        percentage: total > 0 ? ((correct / total) * 100).toFixed(2) : 0,
-        mistakes: document.getElementById('testMistakes').value,
+        percentage: totalQuestions > 0 ? ((correct / totalQuestions) * 100).toFixed(2) : 0,
+        mistakes: document.getElementById('testMistakes').value || '',
         createdAt: new Date().toISOString()
       };
+      
+      // Add chapters if selected
+      if (testSubjectValue && testSubjectValue !== 'full') {
+        const checkedChapters = Array.from(
+          document.querySelectorAll('#testChaptersChecklist input:checked')
+        ).map(el => el.value);
+        if (checkedChapters.length > 0) {
+          testData.chapters = checkedChapters;
+        }
+      }
       
       try {
         const newTestRef = push(ref(database, `users/${currentUser.uid}/tests`));
         await set(newTestRef, testData);
         alert('Test analysis saved successfully!');
+        resetTestForm();
         loadTestHistory();
       } catch (error) {
         console.error('Error saving test analysis:', error);
-        alert('Failed to save test analysis');
+        alert('Failed to save test analysis: ' + error.message);
       }
     });
   }
   
   // Load test history
   loadTestHistory();
+}
+
+function loadChaptersChecklistForTest(subject) {
+  if (!chaptersData) return;
+  
+  const checklist = document.getElementById('testChaptersChecklist');
+  checklist.innerHTML = '';
+  
+  let chapters = [];
+  if (subject === 'physics') {
+    chapters = chaptersData.physics;
+  } else if (subject === 'botany') {
+    chapters = chaptersData.botany;
+  } else if (subject === 'zoology') {
+    chapters = chaptersData.zoology;
+  } else if (subject === 'chemistry') {
+    chapters = [
+      ...chaptersData.chemistry.physical,
+      ...chaptersData.chemistry.inorganic,
+      ...chaptersData.chemistry.organic
+    ];
+  }
+  
+  chapters.forEach(chapter => {
+    const item = document.createElement('div');
+    item.className = 'checklist-item';
+    item.innerHTML = `
+      <label>
+        <input type="checkbox" value="${chapter}">
+        ${chapter}
+      </label>
+    `;
+    checklist.appendChild(item);
+  });
+}
+
+function resetTestForm() {
+  document.getElementById('testName').value = '';
+  document.getElementById('testDate').valueAsDate = new Date();
+  document.getElementById('testSubject').value = '';
+  document.getElementById('testChapterSelection').style.display = 'none';
+  document.getElementById('totalQuestions').value = '';
+  document.getElementById('testCorrect').value = '';
+  document.getElementById('testIncorrect').value = '';
+  document.getElementById('testMissed').value = '';
+  document.getElementById('testMistakes').value = '';
+  document.getElementById('scoreValue').textContent = '0';
+  document.getElementById('percentageValue').textContent = '0%';
 }
 
 function initPlanPage() {
@@ -371,6 +538,212 @@ function initPlanPage() {
   // Load current plan if exists
   loadCurrentPlan();
 }
+
+function generateWeeklyPlan() {
+  const startDate = document.getElementById('startDate').value;
+  if (!startDate) {
+    alert('Please select a start date');
+    return;
+  }
+  
+  const planDays = document.getElementById('planDays');
+  planDays.innerHTML = '';
+  
+  const start = new Date(startDate);
+  
+  for (let i = 0; i < 7; i++) {
+    const dayDate = new Date(start);
+    dayDate.setDate(start.getDate() + i);
+    
+    const dayElement = document.createElement('div');
+    dayElement.className = 'plan-day';
+    dayElement.innerHTML = `
+      <h3>${dayDate.toLocaleDateString('en-US', { weekday: 'long' })} (${dayDate.toLocaleDateString()})</h3>
+      <div class="plan-subjects" id="day${i}Subjects">
+        <div class="plan-subject">
+          <select class="subject-select form-control">
+            <option value="">Select Subject</option>
+            <option value="physics">Physics</option>
+            <option value="chemistry">Chemistry</option>
+            <option value="botany">Botany</option>
+            <option value="zoology">Zoology</option>
+          </select>
+          <div class="plan-options">
+            <select class="option-select form-control">
+              <option value="text">Enter Text</option>
+              <option value="chapters">Select Chapters</option>
+            </select>
+            <div class="plan-input" style="display: none;">
+              <input type="text" class="text-input form-control" placeholder="Enter what to study">
+            </div>
+            <div class="plan-chapters" style="display: none;">
+              <select class="chapter-select form-control" multiple size="4">
+                <!-- Chapters will be loaded here -->
+              </select>
+            </div>
+          </div>
+          <button class="btn btn-secondary add-subject">+ Add Subject</button>
+        </div>
+      </div>
+    `;
+    
+    planDays.appendChild(dayElement);
+    
+    // Initialize day controls
+    initializeDayControls(dayElement, i);
+  }
+  
+  document.getElementById('planForm').style.display = 'block';
+}
+
+function initializeDayControls(dayElement, dayIndex) {
+  const subjectsContainer = dayElement.querySelector(`#day${dayIndex}Subjects`);
+  const subjectSelect = subjectsContainer.querySelector('.subject-select');
+  const optionSelect = subjectsContainer.querySelector('.option-select');
+  const textInput = subjectsContainer.querySelector('.text-input');
+  const chaptersInput = subjectsContainer.querySelector('.chapter-select');
+  const addSubjectBtn = subjectsContainer.querySelector('.add-subject');
+  
+  // Subject change handler
+  subjectSelect.addEventListener('change', () => {
+    const subject = subjectSelect.value;
+    if (subject && optionSelect.value === 'chapters') {
+      loadChaptersForPlan(subject, chaptersInput);
+    }
+  });
+  
+  // Option change handler
+  optionSelect.addEventListener('change', () => {
+    const option = optionSelect.value;
+    subjectsContainer.querySelector('.plan-input').style.display = option === 'text' ? 'block' : 'none';
+    subjectsContainer.querySelector('.plan-chapters').style.display = option === 'chapters' ? 'block' : 'none';
+    
+    // Load chapters if subject is selected and option is chapters
+    if (option === 'chapters' && subjectSelect.value) {
+      loadChaptersForPlan(subjectSelect.value, chaptersInput);
+    }
+  });
+  
+  // Add subject button
+  addSubjectBtn.addEventListener('click', () => {
+    const newSubject = document.createElement('div');
+    newSubject.className = 'plan-subject';
+    newSubject.innerHTML = `
+      <select class="subject-select form-control">
+        <option value="">Select Subject</option>
+        <option value="physics">Physics</option>
+        <option value="chemistry">Chemistry</option>
+        <option value="botany">Botany</option>
+        <option value="zoology">Zoology</option>
+      </select>
+      <div class="plan-options">
+        <select class="option-select form-control">
+          <option value="text">Enter Text</option>
+          <option value="chapters">Select Chapters</option>
+        </select>
+        <div class="plan-input" style="display: none;">
+          <input type="text" class="text-input form-control" placeholder="Enter what to study">
+        </div>
+        <div class="plan-chapters" style="display: none;">
+          <select class="chapter-select form-control" multiple size="4">
+            <!-- Chapters will be loaded here -->
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-danger remove-subject">Remove</button>
+    `;
+    
+    subjectsContainer.insertBefore(newSubject, addSubjectBtn);
+    initializeDayControls(dayElement, dayIndex);
+  });
+  
+  // Remove subject button if exists
+  const removeBtn = subjectsContainer.querySelector('.remove-subject');
+  if (removeBtn) {
+    removeBtn.addEventListener('click', () => {
+      subjectsContainer.removeChild(removeBtn.parentElement);
+    });
+  }
+}
+
+async function saveWeeklyPlan() {
+  if (!currentUser) {
+    alert('Please login to save your weekly plan');
+    return;
+  }
+  
+  const startDate = document.getElementById('startDate').value;
+  if (!startDate) {
+    alert('Please select a start date');
+    return;
+  }
+  
+  const planDays = document.querySelectorAll('.plan-day');
+  const planData = {
+    startDate: startDate,
+    days: {},
+    notes: document.getElementById('planNotes').value || '',
+    createdAt: new Date().toISOString()
+  };
+  
+  const start = new Date(startDate);
+  
+  planDays.forEach((dayElement, index) => {
+    const dayDate = new Date(start);
+    dayDate.setDate(start.getDate() + index);
+    
+    const dateStr = dayDate.toISOString().split('T')[0];
+    const subjects = dayElement.querySelectorAll('.plan-subject');
+    
+    planData.days[dateStr] = {};
+    
+    subjects.forEach((subjectElement, subIndex) => {
+      const subject = subjectElement.querySelector('.subject-select').value;
+      const option = subjectElement.querySelector('.option-select').value;
+      
+      if (subject) {
+        if (option === 'text') {
+          const text = subjectElement.querySelector('.text-input').value;
+          if (text) {
+            planData.days[dateStr][`subject${subIndex}`] = {
+              subject: subject,
+              type: 'text',
+              content: text
+            };
+          }
+        } else {
+          const selectedChapters = Array.from(
+            subjectElement.querySelector('.chapter-select').selectedOptions
+          ).map(opt => opt.value);
+          
+          if (selectedChapters.length > 0) {
+            planData.days[dateStr][`subject${subIndex}`] = {
+              subject: subject,
+              type: 'chapters',
+              chapters: selectedChapters
+            };
+          }
+        }
+      }
+    });
+    
+    // Remove day if no subjects
+    if (Object.keys(planData.days[dateStr]).length === 0) {
+      delete planData.days[dateStr];
+    }
+  });
+  
+  try {
+    const newPlanRef = push(ref(database, `users/${currentUser.uid}/weeklyPlans`));
+    await set(newPlanRef, planData);
+    alert('Weekly plan saved successfully!');
+    loadCurrentPlan();
+  } catch (error) {
+    console.error('Error saving weekly plan:', error);
+    alert('Failed to save weekly plan: ' + error.message);
+  }
+}
+
 
 function initTrackPage() {
   // Tab switching
