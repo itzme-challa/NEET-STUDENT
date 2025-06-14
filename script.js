@@ -1,558 +1,820 @@
-const db = firebase.firestore();
-const rtdb = firebase.database();
-const auth = firebase.auth();
+import { 
+  auth, 
+  database, 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  onAuthStateChanged, 
+  signOut,
+  ref, 
+  set, 
+  get, 
+  update, 
+  remove, 
+  push, 
+  child 
+} from './firebase.js';
 
-function showMessage(message, type = 'success') {
-  const msgDiv = document.getElementById('message');
-  if (msgDiv) {
-    msgDiv.textContent = message;
-    msgDiv.className = `text-${type === 'success' ? 'green' : 'red'}-600 font-medium`;
-    setTimeout(() => msgDiv.textContent = '', 3000);
+// DOM Elements
+const profileSection = document.getElementById('profileSection');
+const loginBtn = document.getElementById('loginBtn');
+const signupBtn = document.getElementById('signupBtn');
+const toggleAuth = document.getElementById('toggleAuth');
+const toggleText = document.getElementById('toggleText');
+const nameLabel = document.getElementById('nameLabel');
+const nameInput = document.getElementById('name');
+const authError = document.getElementById('authError');
+const logoutBtn = document.getElementById('logoutBtn');
+const loginForm = document.getElementById('loginForm');
+const profileView = document.getElementById('profileView');
+const profileName = document.getElementById('profileName');
+const profileEmail = document.getElementById('profileEmail');
+
+// Global Variables
+let currentUser = null;
+let chaptersData = {};
+
+// Initialize App
+document.addEventListener('DOMContentLoaded', async () => {
+  // Load chapters data
+  await loadChaptersData();
+  
+  // Check auth state
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      currentUser = user;
+      updateUIForLoggedInUser();
+      loadUserData();
+    } else {
+      currentUser = null;
+      updateUIForLoggedOutUser();
+    }
+  });
+  
+  // Initialize page specific scripts
+  const path = window.location.pathname.split('/').pop();
+  if (path === 'index.html' || path === '') {
+    initDashboard();
+  } else if (path === 'practice.html') {
+    initPracticePage();
+  } else if (path === 'testAnalysis.html') {
+    initTestAnalysisPage();
+  } else if (path === 'plan.html') {
+    initPlanPage();
+  } else if (path === 'track.html') {
+    initTrackPage();
+  } else if (path === 'profile.html') {
+    initProfilePage();
+  }
+});
+
+// Auth Functions
+function updateUIForLoggedInUser() {
+  // Update profile section in all pages
+  if (profileSection) {
+    profileSection.innerHTML = `
+      <span class="profile-name">${currentUser.displayName || 'User'}</span>
+      <a href="profile.html" class="login-btn">Profile</a>
+    `;
+  }
+  
+  // Update profile page
+  if (profileView) {
+    profileView.style.display = 'block';
+    loginForm.style.display = 'none';
+    profileName.textContent = currentUser.displayName || 'User';
+    profileEmail.textContent = currentUser.email;
   }
 }
 
-async function loadChapters() {
+function updateUIForLoggedOutUser() {
+  // Update profile section in all pages
+  if (profileSection) {
+    profileSection.innerHTML = '<a href="profile.html" class="login-btn">Login</a>';
+  }
+  
+  // Update profile page
+  if (profileView) {
+    profileView.style.display = 'none';
+    loginForm.style.display = 'block';
+  }
+}
+
+// Toggle between login and signup
+if (toggleAuth) {
+  toggleAuth.addEventListener('click', () => {
+    const isLogin = loginBtn.style.display !== 'none';
+    
+    if (isLogin) {
+      // Switch to signup
+      loginBtn.style.display = 'none';
+      signupBtn.style.display = 'block';
+      nameLabel.style.display = 'block';
+      nameInput.style.display = 'block';
+      toggleText.textContent = 'Already have an account?';
+      toggleAuth.textContent = 'Login';
+    } else {
+      // Switch to login
+      loginBtn.style.display = 'block';
+      signupBtn.style.display = 'none';
+      nameLabel.style.display = 'none';
+      nameInput.style.display = 'none';
+      toggleText.textContent = 'Don\'t have an account?';
+      toggleAuth.textContent = 'Sign Up';
+    }
+    
+    authError.textContent = '';
+  });
+}
+
+// Login function
+if (loginBtn) {
+  loginBtn.addEventListener('click', async () => {
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      authError.textContent = '';
+    } catch (error) {
+      authError.textContent = error.message;
+    }
+  });
+}
+
+// Signup function
+if (signupBtn) {
+  signupBtn.addEventListener('click', async () => {
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const name = document.getElementById('name').value;
+    
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(userCredential.user, { displayName: name });
+      
+      // Create user data in database
+      await set(ref(database, `users/${userCredential.user.uid}`), {
+        name: name,
+        email: email,
+        createdAt: new Date().toISOString()
+      });
+      
+      authError.textContent = '';
+    } catch (error) {
+      authError.textContent = error.message;
+    }
+  });
+}
+
+// Logout function
+if (logoutBtn) {
+  logoutBtn.addEventListener('click', async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  });
+}
+
+// Load chapters data
+async function loadChaptersData() {
   try {
     const response = await fetch('chapters.json');
-    return await response.json();
-  } catch (err) {
-    console.error('Error loading chapters:', err);
-    showMessage('Failed to load chapters', 'error');
-    return {};
+    chaptersData = await response.json();
+  } catch (error) {
+    console.error('Error loading chapters data:', error);
   }
 }
 
-function updateProfileLink(user) {
-  const profileLink = document.getElementById('profileLink');
-  const profileLinkMobile = document.getElementById('profileLinkMobile');
-  const userProfile = document.getElementById('userProfile');
-  if (user) {
-    const username = user.email.split('@')[0];
-    profileLink.textContent = username;
-    profileLinkMobile.textContent = username;
-    userProfile.innerHTML = `<span class="font-medium">${username}</span>`;
-  } else {
-    profileLink.textContent = 'Login';
-    profileLinkMobile.textContent = 'Login';
-    userProfile.innerHTML = '<a href="profile.html" class="text-blue-600 hover:underline">Login</a>';
+// Load user data from Firebase
+async function loadUserData() {
+  if (!currentUser) return;
+  
+  const userRef = ref(database, `users/${currentUser.uid}`);
+  const snapshot = await get(userRef);
+  
+  if (snapshot.exists()) {
+    const userData = snapshot.val();
+    // Update UI with user data
   }
 }
 
-auth.onAuthStateChanged(user => {
-  updateProfileLink(user);
-  if (window.location.pathname.includes('profile.html')) {
-    loadProfile(user);
-  } else if (window.location.pathname.includes('index.html')) {
-    loadHomeData();
-  } else if (window.location.pathname.includes('practice.html')) {
-    initPractice();
-  } else if (window.location.pathname.includes('testAnalysis.html')) {
-    initTestAnalysis();
-  } else if (window.location.pathname.includes('plan.html')) {
-    initPlan();
-  } else if (window.location.pathname.includes('track.html')) {
-    initTrack();
-  }
-});
-
-async function loadHomeData() {
-  const plansList = document.getElementById('plansList');
-  const testsList = document.getElementById('testsList');
-  const practiceList = document.getElementById('practiceList');
-
-  try {
-    const plansSnapshot = await db.collection('plans').get();
-    plansList.innerHTML = '';
-    plansSnapshot.forEach(doc => {
-      const plan = doc.data();
-      plansList.innerHTML += `
-        <div class="bg-gray-50 p-4 rounded-md shadow">
-          <p class="font-medium">${plan.user}: ${plan.subjects.map(s => `${s.subject}: ${s.content}`).join(', ')}</p>
-        </div>`;
-    });
-
-    const testsSnapshot = await db.collection('tests').get();
-    testsList.innerHTML = '';
-    testsSnapshot.forEach(doc => {
-      const test = doc.data();
-      testsList.innerHTML += `
-        <div class="bg-gray-50 p-4 rounded-md shadow">
-          <p class="font-medium">${test.user}: ${test.testName} (${test.date}) - Score: ${test.score}</p>
-        </div>`;
-    });
-
-    const practicesSnapshot = await db.collection('practices').get();
-    practiceList.innerHTML = '';
-    practicesSnapshot.forEach(doc => {
-      const practice = doc.data();
-      practiceList.innerHTML += `
-        <div class="bg-gray-50 p-4 rounded-md shadow">
-          <p class="font-medium">${practice.user}: ${practice.selection} - Correct: ${practice.correct}</p>
-        </div>`;
-    });
-  } catch (err) {
-    showMessage('Error loading data', 'error');
-  }
+// Page Specific Functions
+function initDashboard() {
+  if (!currentUser) return;
+  
+  // Load weekly plans
+  loadWeeklyPlans();
+  
+  // Load recent tests
+  loadRecentTests();
+  
+  // Load practice sessions
+  loadPracticeSessions();
 }
 
-function initPractice() {
-  const studyType = document.getElementById('studyType');
-  const selectionOptions = document.getElementById('selectionOptions');
-  const practiceForm = document.getElementById('practiceForm');
-
-  async function updateSelectionOptions() {
-    const type = studyType.value;
-    selectionOptions.innerHTML = '';
-    if (type === 'chapter' || type === 'multipleChapters') {
-      const chapters = await loadChapters();
-      const select = document.createElement('select');
-      select.className = 'w-full p-2 border rounded-md';
-      select.multiple = type === 'multipleChapters';
-      for (const subject in chapters) {
-        const optgroup = document.createElement('optgroup');
-        optgroup.label = subject;
-        chapters[subject].forEach(ch => {
-          const option = document.createElement('option');
-          option.value = `${subject}:${ch}`;
-          option.textContent = ch;
-          optgroup.appendChild(option);
-        });
-        select.appendChild(optgroup);
+function initPracticePage() {
+  const practiceType = document.getElementById('practiceType');
+  const chapterSelection = document.getElementById('chapterSelection');
+  const singleChapterSelection = document.getElementById('singleChapterSelection');
+  const multipleChapterSelection = document.getElementById('multipleChapterSelection');
+  const subjectSelect = document.getElementById('subject');
+  const savePracticeBtn = document.getElementById('savePractice');
+  
+  // Set today's date as default
+  document.getElementById('date').valueAsDate = new Date();
+  
+  // Practice type change handler
+  practiceType.addEventListener('change', () => {
+    const value = practiceType.value;
+    
+    chapterSelection.style.display = ['chapter', 'multiple'].includes(value) ? 'block' : 'none';
+    singleChapterSelection.style.display = value === 'chapter' ? 'block' : 'none';
+    multipleChapterSelection.style.display = value === 'multiple' ? 'block' : 'none';
+    
+    if (value === '') {
+      chapterSelection.style.display = 'none';
+    }
+  });
+  
+  // Subject change handler
+  subjectSelect.addEventListener('change', () => {
+    const subject = subjectSelect.value;
+    
+    if (practiceType.value === 'chapter') {
+      loadChaptersForSubject(subject, 'chapter');
+    } else if (practiceType.value === 'multiple') {
+      loadChaptersChecklist(subject);
+    }
+  });
+  
+  // Save practice session
+  if (savePracticeBtn) {
+    savePracticeBtn.addEventListener('click', async () => {
+      if (!currentUser) {
+        alert('Please login to save your practice session');
+        return;
       }
-      selectionOptions.appendChild(select);
-    } else if (type === 'subject') {
-      const select = document.createElement('select');
-      select.className = 'w-full p-2 border rounded-md';
-      ['Botany', 'Zoology', 'Physics', 'Organic Chemistry', 'Inorganic Chemistry', 'Physical Chemistry'].forEach(sub => {
-        const option = document.createElement('option');
-        option.value = sub;
-        option.textContent = sub;
-        select.appendChild(option);
-      });
-      selectionOptions.appendChild(select);
-    } else {
-      selectionOptions.innerHTML = '<p class="text-gray-600">Full Syllabus Selected</p>';
-    }
-  }
-
-  studyType.addEventListener('change', updateSelectionOptions);
-  updateSelectionOptions();
-
-  practiceForm.addEventListener('submit', async e => {
-    e.preventDefault();
-    const user = auth.currentUser;
-    if (!user) {
-      showMessage('Please login first', 'error');
-      return;
-    }
-    const selection = selectionOptions.querySelector('select')?.selectedOptions ?
-      Array.from(selectionOptions.querySelector('select').selectedOptions).map(opt => opt.value).join(', ') :
-      studyType.value === 'fullSyllabus' ? 'Full Syllabus' : selectionOptions.querySelector('select')?.value;
-    const practice = {
-      user: user.email.split('@')[0],
-      selection,
-      totalQuestions: parseInt(document.getElementById('totalQuestions').value),
-      correct: parseInt(document.getElementById('correct').value),
-      incorrect: parseInt(document.getElementById('incorrect').value),
-      missed: parseInt(document.getElementById('missed').value),
-      mistakes: document.getElementById('mistakes').value,
-      timestamp: firebase.firestore.FieldValue.serverTimestamp()
-    };
-    try {
-      await db.collection('practices').add(practice);
-      showMessage('Practice saved');
-      practiceForm.reset();
-      updateSelectionOptions();
-    } catch (err) {
-      showMessage('Error saving practice', 'error');
-    }
-  });
-}
-
-function initTestAnalysis() {
-  const testForm = document.getElementById('testForm');
-  const testList = document.getElementById('testList');
-
-  function calculateScore(correct, wrong, missed) {
-    return (correct * 4) + (wrong * -1) + (missed * 0);
-  }
-
-  testForm.addEventListener('submit', async e => {
-    e.preventDefault();
-    const user = auth.currentUser;
-    if (!user) {
-      showMessage('Please login first', 'error');
-      return;
-    }
-    const correct = parseInt(document.getElementById('correct').value);
-    const wrong = parseInt(document.getElementById('wrong').value);
-    const missed = parseInt(document.getElementById('missed').value);
-    const test = {
-      user: user.email.split('@')[0],
-      testName: document.getElementById('testName').value,
-      date: document.getElementById('testDate').value,
-      attempted: parseInt(document.getElementById('attemptedQuestions').value),
-      correct,
-      wrong,
-      missed,
-      score: calculateScore(correct, wrong, missed),
-      mistakes: document.getElementById('testMistakes').value,
-      timestamp: firebase.firestore.FieldValue.serverTimestamp()
-    };
-    try {
-      await db.collection('tests').add(test);
-      showMessage('Test saved');
-      testForm.reset();
-    } catch (err) {
-      showMessage('Error saving test', 'error');
-    }
-  });
-
-  db.collection('tests').where('user', '==', auth.currentUser?.email.split('@')[0])
-    .orderBy('timestamp', 'desc').onSnapshot(snapshot => {
-      testList.innerHTML = '';
-      snapshot.forEach(doc => {
-        const test = doc.data();
-        const div = document.createElement('div');
-        div.className = 'bg-gray-50 p-4 rounded-md shadow test-item';
-        div.innerHTML = `
-          <p class="font-medium cursor-pointer">${test.testName} (${test.date}) - Score: ${test.score}</p>
-        `;
-        div.addEventListener('click', () => {
-          testList.querySelectorAll('.test-details').forEach(d => d.remove());
-          const details = document.createElement('div');
-          details.className = 'test-details p-4 bg-gray-100 rounded-md mt-2';
-          details.innerHTML = `
-            <p>Attempted: ${test.attempted}</p>
-            <p>Correct: ${test.correct}</p>
-            <p>Wrong: ${test.wrong}</p>
-            <p>Missed: ${test.missed}</p>
-            <p>Mistakes: ${test.mistakes || 'None'}</p>
-          `;
-          div.appendChild(details);
-        });
-        testList.appendChild(div);
-      });
-    });
-}
-
-function initPlan() {
-  const planForm = document.getElementById('planForm');
-  const subjectsContainer = document.getElementById('subjectsContainer');
-  const addSubject = document.getElementById('addSubject');
-  const planList = document.getElementById('planList');
-
-  async function updateInputContainer(subjectDiv) {
-    const inputType = subjectDiv.querySelector('.inputType').value;
-    const inputContainer = subjectDiv.querySelector('.inputContainer');
-    inputContainer.innerHTML = '';
-    if (inputType === 'text') {
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.className = 'w-full p-2 border rounded-md';
-      input.placeholder = 'Enter plan';
-      inputContainer.appendChild(input);
-    } else {
-      const chapters = await loadChapters();
-      const select = document.createElement('select');
-      select.className = 'w-full p-2 border rounded-md';
-      select.multiple = true;
-      for (const subject in chapters) {
-        const optgroup = document.createElement('optgroup');
-        optgroup.label = subject;
-        chapters[subject].forEach(ch => {
-          const option = document.createElement('option');
-          option.value = ch;
-          option.textContent = ch;
-          optgroup.appendChild(option);
-        });
-        select.appendChild(optgroup);
-      }
-      inputContainer.appendChild(select);
-    }
-  }
-
-  addSubject.addEventListener('click', () => {
-    const subjectDiv = document.createElement('div');
-    subjectDiv.className = 'subject flex flex-col md:flex-row gap-4';
-    subjectDiv.innerHTML = `
-      <select class="subjectSelect w-full md:w-1/3 p-2 border rounded-md">
-        <option value="Botany">Botany</option>
-        <option value="Zoology">Zoology</option>
-        <option value="Physics">Physics</option>
-        <option value="Organic Chemistry">Organic Chemistry</option>
-        <option value="Inorganic Chemistry">Inorganic Chemistry</option>
-        <option value="Physical Chemistry">Physical Chemistry</option>
-      </select>
-      <select class="inputType w-full md:w-1/3 p-2 border rounded-md">
-        <option value="text">Text</option>
-        <option value="chapters">Chapters</option>
-      </select>
-      <div class="inputContainer w-full md:w-1/3"></div>
-    `;
-    subjectsContainer.appendChild(subjectDiv);
-    updateInputContainer(subjectDiv);
-    subjectDiv.querySelector('.inputType').addEventListener('change', () => updateInputContainer(subjectDiv));
-  });
-
-  subjectsContainer.querySelector('.inputType').addEventListener('change', () => updateInputContainer(subjectsContainer.querySelector('.subject')));
-  updateInputContainer(subjectsContainer.querySelector('.subject'));
-
-  planForm.addEventListener('submit', async e => {
-    e.preventDefault();
-    const user = auth.currentUser;
-    if (!user) {
-      showMessage('Please login first', 'error');
-      return;
-    }
-    const subjects = Array.from(subjectsContainer.querySelectorAll('.subject')).map(s => {
-      const input = s.querySelector('.inputContainer input') || s.querySelector('.inputContainer select');
-      return {
-        subject: s.querySelector('.subjectSelect').value,
-        type: s.querySelector('.inputType').value,
-        content: input.multiple ? Array.from(input.selectedOptions).map(opt => opt.value).join(', ') : input.value
+      
+      const practiceData = {
+        type: practiceType.value,
+        date: document.getElementById('date').value,
+        questionsAttempted: document.getElementById('questionsAttempted').value,
+        correct: document.getElementById('correct').value,
+        incorrect: document.getElementById('incorrect').value,
+        missed: document.getElementById('missed').value,
+        mistakes: document.getElementById('mistakes').value,
+        createdAt: new Date().toISOString()
       };
+      
+      if (practiceType.value === 'chapter') {
+        practiceData.subject = subjectSelect.value;
+        practiceData.chapter = document.getElementById('chapter').value;
+      } else if (practiceType.value === 'multiple') {
+        practiceData.subject = subjectSelect.value;
+        const checkedChapters = Array.from(document.querySelectorAll('#chaptersChecklist input:checked')).map(el => el.value);
+        practiceData.chapters = checkedChapters;
+      } else if (practiceType.value === 'subject') {
+        practiceData.subject = subjectSelect.value;
+      }
+      
+      try {
+        const newPracticeRef = push(ref(database, `users/${currentUser.uid}/practiceSessions`));
+        await set(newPracticeRef, practiceData);
+        alert('Practice session saved successfully!');
+        loadPracticeHistory();
+      } catch (error) {
+        console.error('Error saving practice session:', error);
+        alert('Failed to save practice session');
+      }
     });
-    const startDate = new Date('2025-06-15');
-    const plan = {
-      user: user.email.split('@')[0],
-      subjects,
-      startDate: firebase.firestore.Timestamp.fromDate(startDate),
-      endDate: firebase.firestore.Timestamp.fromDate(new Date(startDate.setDate(startDate.getDate() + 7))),
-      timestamp: firebase.firestore.FieldValue.serverTimestamp()
-    };
-    try {
-      await db.collection('plans').add(plan);
-      showMessage('Plan saved');
-    } catch (err) {
-      showMessage('Error saving plan', 'error');
-    }
-  });
-
-  db.collection('plans').where('user', '==', auth.currentUser?.email.split('@')[0])
-    .orderBy('timestamp', 'desc').onSnapshot(snapshot => {
-      planList.innerHTML = '';
-      snapshot.forEach(doc => {
-        const plan = doc.data();
-        const div = document.createElement('div');
-        div.className = 'bg-gray-50 p-4 rounded-md shadow plan-item';
-        div.innerHTML = `
-          <p class="font-medium">From ${plan.startDate.toDate().toISOString().split('T')[0]} to ${plan.endDate.toDate().toISOString().split('T')[0]}</p>
-          <p>${plan.subjects.map(s => `${s.subject}: ${s.content}`).join('<br>')}</p>
-          <button onclick="editPlan('${doc.id}')" class="bg-yellow-600 text-white p-2 rounded-md hover:bg-yellow-700 mt-2">Edit</button>
-        `;
-        planList.appendChild(div);
-      });
-    });
+  }
+  
+  // Load practice history if on practice page
+  if (document.getElementById('practiceHistory')) {
+    loadPracticeHistory();
+    document.getElementById('practiceHistory').style.display = 'block';
+  }
 }
 
-async function editPlan(planId) {
-  const doc = await db.collection('plans').doc(planId).get();
-  const plan = doc.data();
-  const subjectsContainer = document.getElementById('subjectsContainer');
-  subjectsContainer.innerHTML = '';
-  plan.subjects.forEach(s => {
-    const subjectDiv = document.createElement('div');
-    subjectDiv.className = 'subject flex flex-col md:flex-row gap-4';
-    subjectDiv.innerHTML = `
-      <select class="subjectSelect w-full md:w-1/3 p-2 border rounded-md">
-        <option value="Botany" ${s.subject === 'Botany' ? 'selected' : ''}>Botany</option>
-        <option value="Zoology" ${s.subject === 'Zoology' ? 'selected' : ''}>Zoology</option>
-        <option value="Physics" ${s.subject === 'Physics' ? 'selected' : ''}>Physics</option>
-        <option value="Organic Chemistry" ${s.subject === 'Organic Chemistry' ? 'selected' : ''}>Organic Chemistry</option>
-        <option value="Inorganic Chemistry" ${s.subject === 'Inorganic Chemistry' ? 'selected' : ''}>Inorganic Chemistry</option>
-        <option value="Physical Chemistry" ${s.subject === 'Physical Chemistry' ? 'selected' : ''}>Physical Chemistry</option>
-      </select>
-      <select class="inputType w-full md:w-1/3 p-2 border rounded-md">
-        <option value="text" ${s.type === 'text' ? 'selected' : ''}>Text</option>
-        <option value="chapters" ${s.type === 'chapters' ? 'selected' : ''}>Chapters</option>
-      </select>
-      <div class="inputContainer w-full md:w-1/3"></div>
+function initTestAnalysisPage() {
+  // Set today's date as default
+  document.getElementById('testDate').valueAsDate = new Date();
+  
+  // Calculate score when inputs change
+  const inputs = ['testCorrect', 'testIncorrect', 'testMissed', 'totalQuestions'];
+  inputs.forEach(id => {
+    document.getElementById(id).addEventListener('input', calculateTestScore);
+  });
+  
+  // Save test analysis
+  const saveTestBtn = document.getElementById('saveTest');
+  if (saveTestBtn) {
+    saveTestBtn.addEventListener('click', async () => {
+      if (!currentUser) {
+        alert('Please login to save your test analysis');
+        return;
+      }
+      
+      const correct = parseInt(document.getElementById('testCorrect').value) || 0;
+      const incorrect = parseInt(document.getElementById('testIncorrect').value) || 0;
+      const missed = parseInt(document.getElementById('testMissed').value) || 0;
+      const total = parseInt(document.getElementById('totalQuestions').value) || 0;
+      
+      const testData = {
+        name: document.getElementById('testName').value,
+        date: document.getElementById('testDate').value,
+        subject: document.getElementById('testSubject').value,
+        totalQuestions: total,
+        correct: correct,
+        incorrect: incorrect,
+        missed: missed,
+        score: (correct * 4) - (incorrect * 1),
+        percentage: total > 0 ? ((correct / total) * 100).toFixed(2) : 0,
+        mistakes: document.getElementById('testMistakes').value,
+        createdAt: new Date().toISOString()
+      };
+      
+      try {
+        const newTestRef = push(ref(database, `users/${currentUser.uid}/tests`));
+        await set(newTestRef, testData);
+        alert('Test analysis saved successfully!');
+        loadTestHistory();
+      } catch (error) {
+        console.error('Error saving test analysis:', error);
+        alert('Failed to save test analysis');
+      }
+    });
+  }
+  
+  // Load test history
+  loadTestHistory();
+}
+
+function initPlanPage() {
+  // Set today's date as default
+  document.getElementById('startDate').valueAsDate = new Date();
+  
+  // Generate plan button
+  const generatePlanBtn = document.getElementById('generatePlan');
+  if (generatePlanBtn) {
+    generatePlanBtn.addEventListener('click', generateWeeklyPlan);
+  }
+  
+  // Save plan button
+  const savePlanBtn = document.getElementById('savePlan');
+  if (savePlanBtn) {
+    savePlanBtn.addEventListener('click', saveWeeklyPlan);
+  }
+  
+  // Load current plan if exists
+  loadCurrentPlan();
+}
+
+function initTrackPage() {
+  // Tab switching
+  const tabBtns = document.querySelectorAll('.tab-btn');
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      loadChaptersProgress(btn.dataset.subject);
+    });
+  });
+  
+  // Load initial subject
+  loadChaptersProgress('physics');
+  
+  // Reset progress button
+  const resetBtn = document.getElementById('resetProgress');
+  if (resetBtn) {
+    resetBtn.addEventListener('click', () => {
+      if (confirm('Are you sure you want to reset all your progress? This cannot be undone.')) {
+        resetProgress();
+      }
+    });
+  }
+}
+
+function initProfilePage() {
+  if (!currentUser) return;
+  
+  // Load profile data
+  loadProfileData();
+  
+  // Initialize chart
+  initializePerformanceChart();
+}
+
+// Helper Functions
+function loadChaptersForSubject(subject, targetElementId) {
+  if (!chaptersData) return;
+  
+  const chapterSelect = document.getElementById(targetElementId);
+  chapterSelect.innerHTML = '<option value="">Select Chapter</option>';
+  
+  let chapters = [];
+  if (subject === 'physics') {
+    chapters = chaptersData.physics;
+  } else if (subject === 'botany') {
+    chapters = chaptersData.botany;
+  } else if (subject === 'zoology') {
+    chapters = chaptersData.zoology;
+  } else if (subject === 'chemistry') {
+    // For chemistry, we need to combine all subcategories
+    chapters = [
+      ...chaptersData.chemistry.physical,
+      ...chaptersData.chemistry.inorganic,
+      ...chaptersData.chemistry.organic
+    ];
+  }
+  
+  chapters.forEach(chapter => {
+    const option = document.createElement('option');
+    option.value = chapter;
+    option.textContent = chapter;
+    chapterSelect.appendChild(option);
+  });
+}
+
+function loadChaptersChecklist(subject) {
+  if (!chaptersData) return;
+  
+  const checklist = document.getElementById('chaptersChecklist');
+  checklist.innerHTML = '';
+  
+  let chapters = [];
+  if (subject === 'physics') {
+    chapters = chaptersData.physics;
+  } else if (subject === 'botany') {
+    chapters = chaptersData.botany;
+  } else if (subject === 'zoology') {
+    chapters = chaptersData.zoology;
+  } else if (subject === 'chemistry') {
+    // For chemistry, we can show categories
+    checklist.innerHTML = `
+      <h4>Physical Chemistry</h4>
+      ${chaptersData.chemistry.physical.map(chapter => `
+        <div class="checklist-item">
+          <label>
+            <input type="checkbox" value="${chapter}">
+            ${chapter}
+          </label>
+        </div>
+      `).join('')}
+      <h4>Inorganic Chemistry</h4>
+      ${chaptersData.chemistry.inorganic.map(chapter => `
+        <div class="checklist-item">
+          <label>
+            <input type="checkbox" value="${chapter}">
+            ${chapter}
+          </label>
+        </div>
+      `).join('')}
+      <h4>Organic Chemistry</h4>
+      ${chaptersData.chemistry.organic.map(chapter => `
+        <div class="checklist-item">
+          <label>
+            <input type="checkbox" value="${chapter}">
+            ${chapter}
+          </label>
+        </div>
+      `).join('')}
     `;
-    subjectsContainer.appendChild(subjectDiv);
-    const inputContainer = subjectDiv.querySelector('.inputContainer');
-    if (s.type === 'text') {
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.className = 'w-full p-2 border rounded-md';
-      input.value = s.content;
-      inputContainer.appendChild(input);
-    } else {
-      loadChapters().then(chapters => {
-        const select = document.createElement('select');
-        select.className = 'w-full p-2 border rounded-md';
-        select.multiple = true;
-        for (const subject in chapters) {
-          const optgroup = document.createElement('optgroup');
-          optgroup.label = subject;
-          chapters[subject].forEach(ch => {
-            const option = document.createElement('option');
-            option.value = ch;
-            option.textContent = ch;
-            option.selected = s.content.split(', ').includes(ch);
-            optgroup.appendChild(option);
-          });
-          select.appendChild(optgroup);
-        });
-        inputContainer.appendChild(select);
-      });
-    }
-    subjectDiv.querySelector('.inputType').addEventListener('change', () => updateInputContainer(subjectDiv));
+    return;
+  }
+  
+  chapters.forEach(chapter => {
+    const item = document.createElement('div');
+    item.className = 'checklist-item';
+    item.innerHTML = `
+      <label>
+        <input type="checkbox" value="${chapter}">
+        ${chapter}
+      </label>
+    `;
+    checklist.appendChild(item);
   });
 }
 
-function initTrack() {
-  const chaptersList = document.getElementById('chaptersList');
-  const resetChapters = document.getElementById('resetChapters');
+function calculateTestScore() {
+  const correct = parseInt(document.getElementById('testCorrect').value) || 0;
+  const incorrect = parseInt(document.getElementById('testIncorrect').value) || 0;
+  const total = parseInt(document.getElementById('totalQuestions').value) || 1;
+  
+  const score = (correct * 4) - (incorrect * 1);
+  const percentage = ((correct / total) * 100).toFixed(2);
+  
+  document.getElementById('scoreValue').textContent = score;
+  document.getElementById('percentageValue').textContent = `${percentage}%`;
+}
 
-  loadChapters().then(chapters => {
-    for (const subject in chapters) {
-      const section = document.createElement('div');
-      section.className = 'bg-white p-4 rounded-md shadow mb-4';
-      section.innerHTML = `<h2 class="text-xl font-semibold mb-2">${subject}</h2>`;
-      const list = document.createElement('div');
-      list.className = 'space-y-2';
-      chapters[subject].forEach(ch => {
-        const div = document.createElement('div');
-        div.className = 'chapter-item flex items-center gap-4 p-2 bg-gray-50 rounded-md';
-        div.innerHTML = `
-          <span class="font-medium cursor-pointer hover:underline" onclick="editChapter('${subject}', '${ch}')">${ch}</span>
-          <label class="flex items-center gap-2">Lectures <input type="checkbox" onchange="updateChapter('${subject}', '${ch}', 'lectures', this.checked)"></label>
-          <label class="flex items-center gap-2">DPP <input type="checkbox" onchange="updateChapter('${subject}', '${ch}', 'dpp', this.checked)"></label>
+async function loadWeeklyPlans() {
+  if (!currentUser) return;
+  
+  try {
+    const snapshot = await get(ref(database, `users/${currentUser.uid}/weeklyPlans`));
+    if (snapshot.exists()) {
+      const plans = snapshot.val();
+      const plansList = document.getElementById('weeklyPlansList');
+      const plansCount = document.getElementById('weeklyPlansCount');
+      
+      plansCount.textContent = Object.keys(plans).length;
+      plansList.innerHTML = '';
+      
+      // Get the most recent plan
+      const recentPlanKey = Object.keys(plans).pop();
+      const recentPlan = plans[recentPlanKey];
+      
+      Object.entries(recentPlan.days).forEach(([day, subjects]) => {
+        const dayItem = document.createElement('div');
+        dayItem.className = 'stat-list-item';
+        dayItem.innerHTML = `
+          <span>${day}</span>
+          <span>${Object.keys(subjects).length} subjects</span>
         `;
-        list.appendChild(div);
-      });
-      section.appendChild(list);
-      chaptersList.appendChild(section);
-    }
-  });
-
-  rtdb.ref('progress').orderByChild('user').equalTo(auth.currentUser?.email.split('@')[0]).on('value', snapshot => {
-    snapshot.forEach(child => {
-      const progress = child.val();
-      const lectureCheckbox = document.querySelector(`input[onchange*="updateChapter('${progress.subject}', '${progress.chapter}', 'lectures'"]`);
-      const dppCheckbox = document.querySelector(`input[onchange*="updateChapter('${progress.subject}', '${progress.chapter}', 'dpp'"]`);
-      if (lectureCheckbox) {
-        lectureCheckbox.checked = progress.lectures;
-        lectureCheckbox.disabled = progress.lectures;
-        lectureCheckbox.parentElement.style.background = progress.lectures ? '#d1fae5' : '';
-      }
-      if (dppCheckbox) {
-        dppCheckbox.checked = progress.dpp;
-        dppCheckbox.disabled = progress.dpp;
-        dppCheckbox.parentElement.style.background = progress.dpp ? '#d1fae5' : '';
-      }
-    });
-  });
-
-  resetChapters.addEventListener('click', () => {
-    if (confirm('Are you sure you want to reset all progress?')) {
-      rtdb.ref('progress').orderByChild('user').equalTo(auth.currentUser?.email.split('@')[0]).once('value').then(snapshot => {
-        snapshot.forEach(child => child.ref.remove());
-        showMessage('Progress reset');
+        plansList.appendChild(dayItem);
       });
     }
-  });
+  } catch (error) {
+    console.error('Error loading weekly plans:', error);
+  }
 }
 
-function updateChapter(subject, chapter, type, checked) {
-  const user = auth.currentUser;
-  if (!user) {
-    showMessage('Please login first', 'error');
-    return;
+async function loadRecentTests() {
+  if (!currentUser) return;
+  
+  try {
+    const snapshot = await get(ref(database, `users/${currentUser.uid}/tests`));
+    if (snapshot.exists()) {
+      const tests = snapshot.val();
+      const testsList = document.getElementById('recentTestsList');
+      const testsCount = document.getElementById('recentTestsCount');
+      
+      testsCount.textContent = Object.keys(tests).length;
+      testsList.innerHTML = '';
+      
+      // Get the 3 most recent tests
+      const recentTests = Object.entries(tests).slice(-3).reverse();
+      
+      recentTests.forEach(([key, test]) => {
+        const testItem = document.createElement('div');
+        testItem.className = 'stat-list-item';
+        testItem.innerHTML = `
+          <span>${test.name}</span>
+          <span>${test.score}</span>
+        `;
+        testsList.appendChild(testItem);
+      });
+    }
+  } catch (error) {
+    console.error('Error loading recent tests:', error);
   }
-  if (checked && !confirm(`Mark ${type} for ${chapter} as completed?`)) {
-    event.target.checked = false;
-    return;
-  }
-  rtdb.ref('progress').push({
-    user: user.email.split('@')[0],
-    subject,
-    chapter,
-    [type]: checked,
-    timestamp: Date.now()
-  }).then(() => showMessage(`${type} updated for ${chapter}`));
 }
 
-function editChapter(subject, chapter) {
-  if (confirm(`Edit completion status for ${chapter}?`)) {
-    rtdb.ref('progress').orderByChild('user').equalTo(auth.currentUser.email.split('@')[0]).once('value').then(snapshot => {
-      snapshot.forEach(child => {
-        if (child.val().subject === subject && child.val().chapter === chapter) {
-          child.ref.remove();
-          showMessage('Chapter status reset for editing');
+async function loadPracticeSessions() {
+  if (!currentUser) return;
+  
+  try {
+    const snapshot = await get(ref(database, `users/${currentUser.uid}/practiceSessions`));
+    if (snapshot.exists()) {
+      const sessions = snapshot.val();
+      const sessionsList = document.getElementById('practiceSessionsList');
+      const sessionsCount = document.getElementById('practiceSessionsCount');
+      
+      sessionsCount.textContent = Object.keys(sessions).length;
+      sessionsList.innerHTML = '';
+      
+      // Get the 3 most recent sessions
+      const recentSessions = Object.entries(sessions).slice(-3).reverse();
+      
+      recentSessions.forEach(([key, session]) => {
+        const sessionItem = document.createElement('div');
+        sessionItem.className = 'stat-list-item';
+        
+        let sessionTitle = '';
+        if (session.type === 'chapter') {
+          sessionTitle = `${session.subject} - ${session.chapter}`;
+        } else if (session.type === 'multiple') {
+          sessionTitle = `${session.subject} - Multiple Chapters`;
+        } else if (session.type === 'subject') {
+          sessionTitle = `Full ${session.subject}`;
+        } else {
+          sessionTitle = 'Full Syllabus';
         }
+        
+        sessionItem.innerHTML = `
+          <span>${sessionTitle}</span>
+          <span>${session.correct}/${session.questionsAttempted}</span>
+        `;
+        sessionsList.appendChild(sessionItem);
       });
-    });
+    }
+  } catch (error) {
+    console.error('Error loading practice sessions:', error);
   }
 }
 
-function loadProfile(user) {
-  const authSection = document.getElementById('authSection');
-  const profileSection = document.getElementById('profileSection');
-  const authForm = document.getElementById('authForm');
-  const loginBtn = document.getElementById('loginBtn');
-  const signupBtn = document.getElementById('signupBtn');
-
-  if (user) {
-    authSection.classList.add('hidden');
-    profileSection.classList.remove('hidden');
-    document.getElementById('profileName').textContent = user.email.split('@')[0];
-
-    rtdb.ref('progress').orderByChild('user').equalTo(user.email.split('@')[0]).on('value', snapshot => {
-      let lectures = 0, dpp = 0;
-      snapshot.forEach(child => {
-        if (child.val().lectures) lectures++;
-        if (child.val().dpp) dpp++;
-      });
-      document.getElementById('lecturesCompleted').textContent = lectures;
-      document.getElementById('dppCompleted').textContent = dpp;
-    });
-
-    db.collection('tests').where('user', '==', user.email.split('@')[0])
-      .orderBy('timestamp', 'desc').onSnapshot(snapshot => {
-        const labels = [], scores = [];
-        snapshot.forEach(doc => {
-          const test = doc.data();
-          labels.push(test.testName);
-          scores.push(test.score);
+async function loadPracticeHistory() {
+  if (!currentUser) return;
+  
+  try {
+    const snapshot = await get(ref(database, `users/${currentUser.uid}/practiceSessions`));
+    if (snapshot.exists()) {
+      const sessions = snapshot.val();
+      const practiceList = document.getElementById('practiceList');
+      practiceList.innerHTML = '';
+      
+      Object.entries(sessions).forEach(([key, session]) => {
+        let sessionTitle = '';
+        if (session.type === 'chapter') {
+          sessionTitle = `${session.subject} - ${session.chapter}`;
+        } else if (session.type === 'multiple') {
+          sessionTitle = `${session.subject} - Multiple Chapters`;
+        } else if (session.type === 'subject') {
+          sessionTitle = `Full ${session.subject}`;
+        } else {
+          sessionTitle = 'Full Syllabus';
+        }
+        
+        const sessionItem = document.createElement('div');
+        sessionItem.className = 'history-item';
+        sessionItem.innerHTML = `
+          <div class="history-item-header">
+            <span class="history-item-title">${sessionTitle}</span>
+            <span class="history-item-date">${new Date(session.date).toLocaleDateString()}</span>
+          </div>
+          <div class="history-item-details">
+            <p>Questions Attempted: ${session.questionsAttempted}</p>
+            <p>Correct: ${session.correct}, Incorrect: ${session.incorrect}, Missed: ${session.missed}</p>
+            ${session.mistakes ? `<p>Mistakes: ${session.mistakes}</p>` : ''}
+          </div>
+        `;
+        
+        sessionItem.addEventListener('click', () => {
+          sessionItem.classList.toggle('active');
         });
-        new Chart(document.getElementById('testChart'), {
-          type: 'line',
-          data: {
-            labels,
-            datasets: [{ label: 'Test Scores', data: scores, borderColor: '#2563eb', fill: false }]
-          },
-          options: { scales: { y: { beginAtZero: true } } }
-        });
+        
+        practiceList.appendChild(sessionItem);
       });
-  } else {
-    authSection.classList.remove('hidden');
-    profileSection.classList.add('hidden');
+    }
+  } catch (error) {
+    console.error('Error loading practice history:', error);
   }
-
-  authForm.addEventListener('submit', e => {
-    e.preventDefault();
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-    auth.signInWithEmailAndPassword(email, password)
-      .then(() => showMessage('Logged in'))
-      .catch(err => showMessage('Login failed: ' + err.message, 'error'));
-  });
-
-  signupBtn.addEventListener('click', () => {
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-    auth.createUserWithEmailAndPassword(email, password)
-      .then(() => showMessage('Signed up'))
-      .catch(err => showMessage('Signup failed: ' + err.message, 'error'));
-  });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  const hamburger = document.querySelector('.hamburger');
-  const navLinksMobile = document.querySelector('.nav-links-mobile');
-  hamburger.addEventListener('click', () => {
-    navLinksMobile.classList.toggle('hidden');
+async function loadTestHistory() {
+  if (!currentUser) return;
+  
+  try {
+    const snapshot = await get(ref(database, `users/${currentUser.uid}/tests`));
+    if (snapshot.exists()) {
+      const tests = snapshot.val();
+      const testList = document.getElementById('testList');
+      testList.innerHTML = '';
+      
+      Object.entries(tests).forEach(([key, test]) => {
+        const testItem = document.createElement('div');
+        testItem.className = 'history-item';
+        testItem.innerHTML = `
+          <div class="history-item-header">
+            <span class="history-item-title">${test.name}</span>
+            <span class="history-item-date">${new Date(test.date).toLocaleDateString()}</span>
+          </div>
+          <div class="history-item-details">
+            <p>Subject: ${test.subject}</p>
+            <p>Score: ${test.score} (${test.percentage}%)</p>
+            <p>Correct: ${test.correct}, Incorrect: ${test.incorrect}, Missed: ${test.missed}</p>
+            ${test.mistakes ? `<p>Mistakes: ${test.mistakes}</p>` : ''}
+          </div>
+        `;
+        
+        testItem.addEventListener('click', () => {
+          testItem.classList.toggle('active');
+        });
+        
+        testList.appendChild(testItem);
+      });
+    }
+  } catch (error) {
+    console.error('Error loading test history:', error);
+  }
+}
+
+function generateWeeklyPlan() {
+  const startDate = document.getElementById('startDate').value;
+  if (!startDate) {
+    alert('Please select a start date');
+    return;
+  }
+  
+  const planDays = document.getElementById('planDays');
+  planDays.innerHTML = '';
+  
+  const start = new Date(startDate);
+  
+  for (let i = 0; i < 7; i++) {
+    const dayDate = new Date(start);
+    dayDate.setDate(start.getDate() + i);
+    
+    const dayElement = document.createElement('div');
+    dayElement.className = 'plan-day';
+    dayElement.innerHTML = `
+      <h3>${dayDate.toLocaleDateString('en-US', { weekday: 'long' })} (${dayDate.toLocaleDateString()})</h3>
+      <div class="plan-subjects" id="day${i}Subjects">
+        <div class="plan-subject">
+          <select class="subject-select form-control">
+            <option value="">Select Subject</option>
+            <option value="physics">Physics</option>
+            <option value="chemistry">Chemistry</option>
+            <option value="botany">Botany</option>
+            <option value="zoology">Zoology</option>
+          </select>
+          <div class="plan-options">
+            <select class="option-select form-control">
+              <option value="text">Enter Text</option>
+              <option value="chapters">Select Chapters</option>
+            </select>
+            <div class="plan-input" style="display: none;">
+              <input type="text" class="text-input form-control" placeholder="Enter what to study">
+            </div>
+            <div class="plan-chapters" style="display: none;">
+              <select class="chapter-select form-control" multiple size="4">
+                <!-- Chapters will be loaded here -->
+              </select>
+            </div>
+          </div>
+          <button class="btn btn-secondary add-subject">+ Add Subject</button>
+        </div>
+      </div>
+    `;
+    
+    planDays.appendChild(dayElement);
+    
+    // Initialize day controls
+    initializeDayControls(dayElement, i);
+  }
+  
+  document.getElementById('planForm').style.display = 'block';
+}
+
+function initializeDayControls(dayElement, dayIndex) {
+  const subjectsContainer = dayElement.querySelector(`#day${dayIndex}Subjects`);
+  const subjectSelect = subjectsContainer.querySelector('.subject-select');
+  const optionSelect = subjectsContainer.querySelector('.option-select');
+  const textInput = subjectsContainer.querySelector('.text-input');
+  const chaptersInput = subjectsContainer.querySelector('.chapter-select');
+  const addSubjectBtn = subjectsContainer.querySelector('.add-subject');
+  
+  // Subject change handler
+  subjectSelect.addEventListener('change', () => {
+    const subject = subjectSelect.value;
+    if (subject) {
+      loadChaptersForPlan(subject, chaptersInput);
+    }
   });
-});
+  
+  // Option change handler
+  optionSelect.addEventListener('change', () => {
+    const option = optionSelect.value;
+    subjectsContainer.querySelector('.plan-input').style.display = option === 'text' ? 'block' : 'none';
+    subjectsContainer.querySelector('.plan-chapters').style.display = option === 'chapters' ? 'block' : 'none';
+  });
+  
+  // Add subject button
+  addSubjectBtn.addEventListener('click', () => {
+    const newSubject = document.createElement('div');
+    newSubject.className = 'plan-subject';
+    newSubject.innerHTML = `
+      <select class="subject-select form-control">
+        <option value="">Select Subject</option>
+        <option value="physics">Physics</option>
+        <option value="chemistry">Chemistry</option>
+        <option value="botany">Botany</option>
+        <option value="zoology">Zoology</option>
+      </select>
+      <div class="plan-options">
+        <select class="option-select form-control">
+          <option value="text">Enter Text</option>
+          <option value="chapters">Select Chapters</option>
+        </select>
+        <div class="plan-input" style="display: none;">
+          <input type="text" class="text-input form-control" placeholder="Enter what to study">
+        </div>
+        <div class="plan-chapters" style="display: none;">
+          <select class="chapter-select form-control" multiple size="4">
+            <!-- Chapters will be loaded here -->
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-danger remove-subject">Remove</button>
+    `;
+    
+    subjectsContainer.insertBefore(newSubject, addSubjectBtn);
+    initializeDayControls(dayElement, dayIndex);
+  });
+  
+  // Remove subject button if exists
+  const removeBtn = subjectsContainer.querySelector('.remove-subject');
+  if (removeBtn
