@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Track</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-database.js"></script>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="logo">Study Tracker</div>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="practice.html">Practice</a>
+      <a href="testAnalysis.html">Test Analysis</a>
+      <a href="plan.html">Plan</a>
+      <a href="track.html" class="active">Track</a>
+      <a href="profile.html" id="profileLink">Profile</a>
+    </div>
+    <div class="hamburger">☰</div>
+  </nav>
+  <div class="container">
+    <h1>Track Progress</h1>
+    <button id="resetChapters">Reset All</button>
+    <div id="chaptersList"></div>
+    <div id="message"></div>
+  </div>
+  <footer class="bottom-nav">
+    <a href="index.html">Home</a>
+    <a href="practice.html">Practice</a>
+    <a href="testAnalysis.html">Test Analysis</a>
+    <a href="plan.html">Plan</a>
+    <a href="track.html">Track</a>
+    <a href="profile.html">Profile</a>
+  </footer>
+  <script src="script.js"></script>
+</body>
+</html>
