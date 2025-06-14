@@ -1,8 +1,8 @@
 {
-  "Botany": ["Plant Physiology", "Cell Biology", "Genetics"],
-  "Zoology": ["Animal Diversity", "Human Physiology", "Ecology"],
-  "Physics": ["Mechanics", "Electromagnetism", "Optics"],
-  "Organic Chemistry": ["Hydrocarbons", "Alcohols", "Aldehydes"],
-  "Inorganic Chemistry": ["Periodic Table", "Chemical Bonding", "Coordination Compounds"],
-  "Physical Chemistry": ["Thermodynamics", "Kinetics", "Electrochemistry"]
+  "Botany": ["Plant Physiology", "Cell Biology", "Genetics", "Ecology"],
+  "Zoology": ["Animal Diversity", "Human Physiology", "Evolution", "Animal Behavior"],
+  "Physics": ["Mechanics", "Electromagnetism", "Optics", "Thermodynamics"],
+  "Organic Chemistry": ["Hydrocarbons", "Alcohols", "Aldehydes", "Carboxylic Acids"],
+  "Inorganic Chemistry": ["Periodic Table", "Chemical Bonding", "Coordination Compounds", "Metallurgy"],
+  "Physical Chemistry": ["Thermodynamics", "Kinetics", "Electrochemistry", "Quantum Chemistry"]
 }
