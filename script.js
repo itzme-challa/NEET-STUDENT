@@ -770,6 +770,71 @@ function initTrackPage() {
   }
 }
 
+async function loadChaptersProgress(subject) {
+  if (!currentUser) return;
+  
+  try {
+    const snapshot = await get(ref(database, `users/${currentUser.uid}/progress/${subject}`));
+    const progressData = snapshot.exists() ? snapshot.val() : {};
+    
+    const chaptersContainer = document.getElementById('chaptersProgress');
+    chaptersContainer.innerHTML = '';
+    
+    let chapters = [];
+    if (subject === 'physics') {
+      chapters = chaptersData.physics;
+    } else if (subject === 'botany') {
+      chapters = chaptersData.botany;
+    } else if (subject === 'zoology') {
+      chapters = chaptersData.zoology;
+    } else if (subject === 'chemistry') {
+      chapters = [
+        ...chaptersData.chemistry.physical,
+        ...chaptersData.chemistry.inorganic,
+        ...chaptersData.chemistry.organic
+      ];
+    }
+    
+    chapters.forEach(chapter => {
+      const chapterItem = document.createElement('div');
+      chapterItem.className = 'chapter-item';
+      
+      const chapterProgress = progressData[chapter] || { lectures: false, dpp: false };
+      
+      chapterItem.innerHTML = `
+        <div class="chapter-name">${chapter}</div>
+        <div class="checkbox-container">
+          <input type="checkbox" ${chapterProgress.lectures ? 'checked' : ''} 
+                 data-chapter="${chapter}" data-type="lectures">
+        </div>
+        <div class="checkbox-container">
+          <input type="checkbox" ${chapterProgress.dpp ? 'checked' : ''} 
+                 data-chapter="${chapter}" data-type="dpp">
+        </div>
+      `;
+      
+      // Add event listeners to checkboxes
+      const lecturesCheckbox = chapterItem.querySelector('input[data-type="lectures"]');
+      const dppCheckbox = chapterItem.querySelector('input[data-type="dpp"]');
+      
+      lecturesCheckbox.addEventListener('change', () => {
+        updateChapterProgress(subject, chapter, 'lectures', lecturesCheckbox.checked);
+      });
+      
+      dppCheckbox.addEventListener('change', () => {
+        updateChapterProgress(subject, chapter, 'dpp', dppCheckbox.checked);
+      });
+      
+      chaptersContainer.appendChild(chapterItem);
+    });
+    
+    // Update progress stats
+    updateProgressStats(subject);
+  } catch (error) {
+    console.error('Error loading chapters progress:', error);
+  }
+}
+
 function initProfilePage() {
   if (!currentUser) return;
   
