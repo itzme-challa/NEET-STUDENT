@@ -1,71 +1,127 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Practice - Study Tracker</title>
-  <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-firestore.js"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="styles.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Study Planner - Practice</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
-<body class="bg-gray-100 font-sans">
-  <nav class="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-4 shadow-lg">
-    <div class="container mx-auto flex justify-between items-center">
-      <div class="text-2xl font-bold">Study Tracker</div>
-      <div class="hidden md:flex space-x-6 nav-links">
-        <a href="index.html" class="hover:text-blue-200">Home</a>
-        <a href="practice.html" class="active hover:text-blue-200">Practice</a>
-        <a href="testAnalysis.html" class="hover:text-blue-200">Test Analysis</a>
-        <a href="plan.html" class="hover:text-blue-200">Plan</a>
-        <a href="track.html" class="hover:text-blue-200">Track</a>
-        <a href="profile.html" id="profileLink" class="hover:text-blue-200">Profile</a>
-      </div>
-      <div class="md:hidden hamburger cursor-pointer text-2xl">☰</div>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo">Study Planner</div>
+            <div class="profile-section" id="profileSection">
+                <a href="profile.html" class="login-btn">Login</a>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <h1 class="page-title">Practice Session</h1>
+            
+            <section class="practice-form">
+                <div class="form-group">
+                    <label for="practiceType">Practice Type</label>
+                    <select id="practiceType" class="form-control">
+                        <option value="">Select Practice Type</option>
+                        <option value="chapter">Single Chapter</option>
+                        <option value="multiple">Multiple Chapters</option>
+                        <option value="subject">Full Subject</option>
+                        <option value="syllabus">Full Syllabus</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="chapterSelection" style="display: none;">
+                    <label for="subject">Subject</label>
+                    <select id="subject" class="form-control">
+                        <option value="">Select Subject</option>
+                        <option value="physics">Physics</option>
+                        <option value="chemistry">Chemistry</option>
+                        <option value="botany">Botany</option>
+                        <option value="zoology">Zoology</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="singleChapterSelection" style="display: none;">
+                    <label for="chapter">Chapter</label>
+                    <select id="chapter" class="form-control">
+                        <option value="">Select Chapter</option>
+                        <!-- Chapters will be loaded dynamically -->
+                    </select>
+                </div>
+
+                <div class="form-group" id="multipleChapterSelection" style="display: none;">
+                    <label>Select Chapters</label>
+                    <div id="chaptersChecklist" class="checklist">
+                        <!-- Chapters checklist will be loaded dynamically -->
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="date">Date</label>
+                    <input type="date" id="date" class="form-control" value="">
+                </div>
+
+                <div class="form-group">
+                    <label for="questionsAttempted">Questions Attempted</label>
+                    <input type="number" id="questionsAttempted" class="form-control" placeholder="Number of questions attempted">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="correct">Correct</label>
+                        <input type="number" id="correct" class="form-control" placeholder="Correct answers">
+                    </div>
+                    <div class="form-group">
+                        <label for="incorrect">Incorrect</label>
+                        <input type="number" id="incorrect" class="form-control" placeholder="Incorrect answers">
+                    </div>
+                    <div class="form-group">
+                        <label for="missed">Missed</label>
+                        <input type="number" id="missed" class="form-control" placeholder="Missed questions">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="mistakes">Mistakes (Optional)</label>
+                    <textarea id="mistakes" class="form-control" rows="3" placeholder="Note down your mistakes during this practice session"></textarea>
+                </div>
+
+                <button id="savePractice" class="btn btn-primary">Save Practice Session</button>
+            </section>
+
+            <section class="practice-history" id="practiceHistory" style="display: none;">
+                <h2>Your Practice History</h2>
+                <div class="history-list" id="practiceList">
+                    <!-- Practice sessions will be loaded here -->
+                </div>
+            </section>
+        </main>
+
+        <nav class="bottom-nav">
+            <a href="index.html" class="nav-item">
+                <i class="fas fa-home"></i>
+                <span>Home</span>
+            </a>
+            <a href="practice.html" class="nav-item active">
+                <i class="fas fa-book-open"></i>
+                <span>Practice</span>
+            </a>
+            <a href="testAnalysis.html" class="nav-item">
+                <i class="fas fa-chart-line"></i>
+                <span>Tests</span>
+            </a>
+            <a href="plan.html" class="nav-item">
+                <i class="fas fa-calendar-alt"></i>
+                <span>Plan</span>
+            </a>
+            <a href="track.html" class="nav-item">
+                <i class="fas fa-tasks"></i>
+                <span>Track</span>
+            </a>
+        </nav>
     </div>
-    <div class="nav-links-mobile md:hidden hidden flex-col bg-blue-700 p-4 space-y-2">
-      <a href="index.html" class="hover:text-blue-200">Home</a>
-      <a href="practice.html" class="active hover:text-blue-200">Practice</a>
-      <a href="testAnalysis.html" class="hover:text-blue-200">Test Analysis</a>
-      <a href="plan.html" class="hover:text-blue-200">Plan</a>
-      <a href="track.html" class="hover:text-blue-200">Track</a>
-      <a href="profile.html" id="profileLinkMobile" class="hover:text-blue-200">Profile</a>
-    </div>
-  </nav>
-  <div class="container mx-auto p-6 max-w-5xl">
-    <h1 class="text-3xl font-semibold text-gray-800 mb-6">Practice Session</h1>
-    <form id="practiceForm" class="bg-white p-6 rounded-lg shadow-md space-y-4">
-      <div>
-        <label class="block text-gray-700 font-medium mb-2">Select Study Type:</label>
-        <select id="studyType" class="w-full p-2 border rounded-md">
-          <option value="chapter">Chapter</option>
-          <option value="multipleChapters">Multiple Chapters</option>
-          <option value="subject">Subject</option>
-          <option value="fullSyllabus">Full Syllabus</option>
-        </select>
-      </div>
-      <div id="selectionOptions" class="space-y-2"></div>
-      <h3 class="text-xl font-semibold">Practice Details</h3>
-      <input type="number" id="totalQuestions" placeholder="Total Questions Practiced" class="w-full p-2 border rounded-md" required>
-      <input type="number" id="correct" placeholder="Correct Answers" class="w-full p-2 border rounded-md" required>
-      <input type="number" id="incorrect" placeholder="Incorrect Answers" class="w-full p-2 border rounded-md" required>
-      <input type="number" id="missed" placeholder="Missed Questions" class="w-full p-2 border rounded-md" required>
-      <textarea id="mistakes" placeholder="Mistakes Noted (Optional)" class="w-full p-2 border rounded-md"></textarea>
-      <button type="submit" class="bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700">Save Practice</button>
-    </form>
-    <div id="message" class="mt-4 text-center"></div>
-  </div>
-  <footer class="bg-gray-800 text-white p-4 fixed bottom-0 w-full md:hidden">
-    <div class="container mx-auto flex justify-around">
-      <a href="index.html" class="hover:text-blue-200">Home</a>
-      <a href="practice.html" class="hover:text-blue-200">Practice</a>
-      <a href="testAnalysis.html" class="hover:text-blue-200">Test Analysis</a>
-      <a href="plan.html" class="hover:text-blue-200">Plan</a>
-      <a href="track.html" class="hover:text-blue-200">Track</a>
-      <a href="profile.html" class="hover:text-blue-200">Profile</a>
-    </div>
-  </footer>
-  <script src="script.js"></script>
+
+    <script type="module" src="script.js"></script>
 </body>
 </html>
