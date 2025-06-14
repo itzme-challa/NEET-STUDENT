@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Practice</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-database.js"></script>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="logo">Study Tracker</div>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="practice.html" class="active">Practice</a>
+      <a href="testAnalysis.html">Test Analysis</a>
+      <a href="plan.html">Plan</a>
+      <a href="track.html">Track</a>
+      <a href="profile.html" id="profileLink">Profile</a>
+    </div>
+    <div class="hamburger">☰</div>
+  </nav>
+  <div class="container">
+    <h1>Practice Session</h1>
+    <form id="practiceForm">
+      <label>Select Study Type:</label>
+      <select id="studyType">
+        <option value="chapter">Chapter</option>
+        <option value="multipleChapters">Multiple Chapters</option>
+        <option value="subject">Subject</option>
+        <option value="fullSyllabus">Full Syllabus</option>
+      </select>
+      <div id="selectionOptions"></div>
+      <h3>Practice Details</h3>
+      <input type="number" id="totalQuestions" placeholder="Total Questions Practiced" required>
+      <input type="number" id="correct" placeholder="Correct Answers" required>
+      <input type="number" id="incorrect" placeholder="Incorrect Answers" required>
+      <input type="number" id="missed" placeholder="Missed Questions" required>
+      <textarea id="mistakes" placeholder="Mistakes Noted (Optional)"></textarea>
+      <button type="submit">Save Practice</button>
+    </form>
+    <div id="message"></div>
+  </div>
+  <footer class="bottom-nav">
+    <a href="index.html">Home</a>
+    <a href="practice.html">Practice</a>
+    <a href="testAnalysis.html">Test Analysis</a>
+    <a href="plan.html">Plan</a>
+    <a href="track.html">Track</a>
+    <a href="profile.html">Profile</a>
+  </footer>
+  <script src="script.js"></script>
+</body>
+</html>
