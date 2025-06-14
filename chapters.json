@@ -1,0 +1,8 @@
+{
+  "Botany": ["Plant Physiology", "Cell Biology", "Genetics"],
+  "Zoology": ["Animal Diversity", "Human Physiology", "Ecology"],
+  "Physics": ["Mechanics", "Electromagnetism", "Optics"],
+  "Organic Chemistry": ["Hydrocarbons", "Alcohols", "Aldehydes"],
+  "Inorganic Chemistry": ["Periodic Table", "Chemical Bonding", "Coordination Compounds"],
+  "Physical Chemistry": ["Thermodynamics", "Kinetics", "Electrochemistry"]
+}
