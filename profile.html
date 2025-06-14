@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-database.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="logo">Study Tracker</div>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="practice.html">Practice</a>
+      <a href="testAnalysis.html">Test Analysis</a>
+      <a href="plan.html">Plan</a>
+      <a href="track.html">Track</a>
+      <a href="profile.html" class="active" id="profileLink">Profile</a>
+    </div>
+    <div class="hamburger">☰</div>
+  </nav>
+  <div class="container">
+    <div id="authSection">
+      <h1>Login / Signup</h1>
+      <form id="authForm">
+        <input type="email" id="email" placeholder="Email" required>
+        <input type="password" id="password" placeholder="Password" required>
+        <button type="submit" id="loginBtn">Login</button>
+        <button type="button" id="signupBtn">Signup</button>
+      </form>
+    </div>
+    <div id="profileSection" style="display: none;">
+      <h1>Profile</h1>
+      <p>Name: <span id="profileName"></span></p>
+      <h2>Performance Overview</h2>
+      <p>Lectures Completed: <span id="lecturesCompleted"></span></p>
+      <p>DPP Completed: <span id="dppCompleted"></span></p>
+      <h3>Test Performance</h3>
+      <canvas id="testChart"></canvas>
+    </div>
+    <div id="message"></div>
+  </div>
+  <footer class="bottom-nav">
+    <a href="index.html">Home</a>
+    <a href="practice.html">Practice</a>
+    <a href="testAnalysis.html">Test Analysis</a>
+    <a href="plan.html">Plan</a>
+    <a href="track.html">Track</a>
+    <a href="profile.html">Profile</a>
+  </footer>
+  <script src="script.js"></script>
+</body>
+</html>
