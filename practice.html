@@ -3,53 +3,68 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Practice</title>
-  <link rel="stylesheet" href="styles.css">
+  <title>Practice - Study Tracker</title>
   <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-database.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-firestore.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="styles.css">
 </head>
-<body>
-  <nav class="navbar">
-    <div class="logo">Study Tracker</div>
-    <div class="nav-links">
-      <a href="index.html">Home</a>
-      <a href="practice.html" class="active">Practice</a>
-      <a href="testAnalysis.html">Test Analysis</a>
-      <a href="plan.html">Plan</a>
-      <a href="track.html">Track</a>
-      <a href="profile.html" id="profileLink">Profile</a>
+<body class="bg-gray-100 font-sans">
+  <nav class="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-4 shadow-lg">
+    <div class="container mx-auto flex justify-between items-center">
+      <div class="text-2xl font-bold">Study Tracker</div>
+      <div class="hidden md:flex space-x-6 nav-links">
+        <a href="index.html" class="hover:text-blue-200">Home</a>
+        <a href="practice.html" class="active hover:text-blue-200">Practice</a>
+        <a href="testAnalysis.html" class="hover:text-blue-200">Test Analysis</a>
+        <a href="plan.html" class="hover:text-blue-200">Plan</a>
+        <a href="track.html" class="hover:text-blue-200">Track</a>
+        <a href="profile.html" id="profileLink" class="hover:text-blue-200">Profile</a>
+      </div>
+      <div class="md:hidden hamburger cursor-pointer text-2xl">☰</div>
     </div>
-    <div class="hamburger">☰</div>
+    <div class="nav-links-mobile md:hidden hidden flex-col bg-blue-700 p-4 space-y-2">
+      <a href="index.html" class="hover:text-blue-200">Home</a>
+      <a href="practice.html" class="active hover:text-blue-200">Practice</a>
+      <a href="testAnalysis.html" class="hover:text-blue-200">Test Analysis</a>
+      <a href="plan.html" class="hover:text-blue-200">Plan</a>
+      <a href="track.html" class="hover:text-blue-200">Track</a>
+      <a href="profile.html" id="profileLinkMobile" class="hover:text-blue-200">Profile</a>
+    </div>
   </nav>
-  <div class="container">
-    <h1>Practice Session</h1>
-    <form id="practiceForm">
-      <label>Select Study Type:</label>
-      <select id="studyType">
-        <option value="chapter">Chapter</option>
-        <option value="multipleChapters">Multiple Chapters</option>
-        <option value="subject">Subject</option>
-        <option value="fullSyllabus">Full Syllabus</option>
-      </select>
-      <div id="selectionOptions"></div>
-      <h3>Practice Details</h3>
-      <input type="number" id="totalQuestions" placeholder="Total Questions Practiced" required>
-      <input type="number" id="correct" placeholder="Correct Answers" required>
-      <input type="number" id="incorrect" placeholder="Incorrect Answers" required>
-      <input type="number" id="missed" placeholder="Missed Questions" required>
-      <textarea id="mistakes" placeholder="Mistakes Noted (Optional)"></textarea>
-      <button type="submit">Save Practice</button>
+  <div class="container mx-auto p-6 max-w-5xl">
+    <h1 class="text-3xl font-semibold text-gray-800 mb-6">Practice Session</h1>
+    <form id="practiceForm" class="bg-white p-6 rounded-lg shadow-md space-y-4">
+      <div>
+        <label class="block text-gray-700 font-medium mb-2">Select Study Type:</label>
+        <select id="studyType" class="w-full p-2 border rounded-md">
+          <option value="chapter">Chapter</option>
+          <option value="multipleChapters">Multiple Chapters</option>
+          <option value="subject">Subject</option>
+          <option value="fullSyllabus">Full Syllabus</option>
+        </select>
+      </div>
+      <div id="selectionOptions" class="space-y-2"></div>
+      <h3 class="text-xl font-semibold">Practice Details</h3>
+      <input type="number" id="totalQuestions" placeholder="Total Questions Practiced" class="w-full p-2 border rounded-md" required>
+      <input type="number" id="correct" placeholder="Correct Answers" class="w-full p-2 border rounded-md" required>
+      <input type="number" id="incorrect" placeholder="Incorrect Answers" class="w-full p-2 border rounded-md" required>
+      <input type="number" id="missed" placeholder="Missed Questions" class="w-full p-2 border rounded-md" required>
+      <textarea id="mistakes" placeholder="Mistakes Noted (Optional)" class="w-full p-2 border rounded-md"></textarea>
+      <button type="submit" class="bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700">Save Practice</button>
     </form>
-    <div id="message"></div>
+    <div id="message" class="mt-4 text-center"></div>
   </div>
-  <footer class="bottom-nav">
-    <a href="index.html">Home</a>
-    <a href="practice.html">Practice</a>
-    <a href="testAnalysis.html">Test Analysis</a>
-    <a href="plan.html">Plan</a>
-    <a href="track.html">Track</a>
-    <a href="profile.html">Profile</a>
+  <footer class="bg-gray-800 text-white p-4 fixed bottom-0 w-full md:hidden">
+    <div class="container mx-auto flex justify-around">
+      <a href="index.html" class="hover:text-blue-200">Home</a>
+      <a href="practice.html" class="hover:text-blue-200">Practice</a>
+      <a href="testAnalysis.html" class="hover:text-blue-200">Test Analysis</a>
+      <a href="plan.html" class="hover:text-blue-200">Plan</a>
+      <a href="track.html" class="hover:text-blue-200">Track</a>
+      <a href="profile.html" class="hover:text-blue-200">Profile</a>
+    </div>
   </footer>
   <script src="script.js"></script>
 </body>
