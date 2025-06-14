@@ -31,29 +31,34 @@
                     </select>
                 </div>
 
-                <div class="form-group" id="chapterSelection" style="display: none;">
-                    <label for="subject">Subject</label>
-                    <select id="subject" class="form-control">
-                        <option value="">Select Subject</option>
-                        <option value="physics">Physics</option>
-                        <option value="chemistry">Chemistry</option>
-                        <option value="botany">Botany</option>
-                        <option value="zoology">Zoology</option>
-                    </select>
+                <div id="subjectSelectionWrapper" style="display: none;">
+                    <div class="form-group">
+                        <label for="subject">Subject</label>
+                        <select id="subject" class="form-control">
+                            <option value="">Select Subject</option>
+                            <option value="physics">Physics</option>
+                            <option value="chemistry">Chemistry</option>
+                            <option value="botany">Botany</option>
+                            <option value="zoology">Zoology</option>
+                        </select>
+                    </div>
                 </div>
 
-                <div class="form-group" id="singleChapterSelection" style="display: none;">
-                    <label for="chapter">Chapter</label>
-                    <select id="chapter" class="form-control">
-                        <option value="">Select Chapter</option>
-                        <!-- Chapters will be loaded dynamically -->
-                    </select>
+                <div id="singleChapterSelection" style="display: none;">
+                    <div class="form-group">
+                        <label for="chapter">Chapter</label>
+                        <select id="chapter" class="form-control">
+                            <option value="">Select Chapter</option>
+                        </select>
+                    </div>
                 </div>
 
-                <div class="form-group" id="multipleChapterSelection" style="display: none;">
-                    <label>Select Chapters</label>
-                    <div id="chaptersChecklist" class="checklist">
-                        <!-- Chapters checklist will be loaded dynamically -->
+                <div id="multipleChapterSelection" style="display: none;">
+                    <div class="form-group">
+                        <label>Select Chapters</label>
+                        <div id="chaptersChecklist" class="checklist">
+                            <!-- Will be populated dynamically -->
+                        </div>
                     </div>
                 </div>
 
