@@ -1,10 +1,11 @@
 import { 
   auth, 
-  database, 
+  database,
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
   onAuthStateChanged, 
   signOut,
+  updateProfile,
   ref, 
   set, 
   get, 
@@ -66,6 +67,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     initProfilePage();
   }
 });
+
+// Utility Functions
+function showAlert(message, isSuccess = true) {
+  const alertDiv = document.createElement('div');
+  alertDiv.className = `alert ${isSuccess ? 'alert-success' : 'alert-error'}`;
+  alertDiv.textContent = message;
+  document.body.appendChild(alertDiv);
+  
+  setTimeout(() => {
+    alertDiv.remove();
+  }, 3000);
+}
+
+async function loadChaptersData() {
+  try {
+    const response = await fetch('chapters.json');
+    chaptersData = await response.json();
+    console.log('Chapters data loaded:', chaptersData);
+  } catch (error) {
+    console.error('Error loading chapters data:', error);
+    showAlert('Failed to load chapters data', false);
+  }
+}
 
 // Auth Functions
 function updateUIForLoggedInUser() {
@@ -134,9 +158,12 @@ if (loginBtn) {
     
     try {
       await signInWithEmailAndPassword(auth, email, password);
+      showAlert('Login successful!');
       authError.textContent = '';
     } catch (error) {
+      console.error('Login error:', error);
       authError.textContent = error.message;
+      showAlert('Login failed: ' + error.message, false);
     }
   });
 }
@@ -153,15 +180,18 @@ if (signupBtn) {
       await updateProfile(userCredential.user, { displayName: name });
       
       // Create user data in database
-      await set(ref(database, `users/${userCredential.user.uid}`), {
+      await set(ref(database, `users/${userCredential.user.uid}/profile`), {
         name: name,
         email: email,
         createdAt: new Date().toISOString()
       });
       
+      showAlert('Account created successfully!');
       authError.textContent = '';
     } catch (error) {
+      console.error('Signup error:', error);
       authError.textContent = error.message;
+      showAlert('Signup failed: ' + error.message, false);
     }
   });
 }
@@ -171,32 +201,27 @@ if (logoutBtn) {
   logoutBtn.addEventListener('click', async () => {
     try {
       await signOut(auth);
+      showAlert('Logged out successfully');
     } catch (error) {
       console.error('Logout error:', error);
+      showAlert('Logout failed: ' + error.message, false);
     }
   });
-}
-
-// Load chapters data
-async function loadChaptersData() {
-  try {
-    const response = await fetch('chapters.json');
-    chaptersData = await response.json();
-  } catch (error) {
-    console.error('Error loading chapters data:', error);
-  }
 }
 
 // Load user data from Firebase
 async function loadUserData() {
   if (!currentUser) return;
   
-  const userRef = ref(database, `users/${currentUser.uid}`);
-  const snapshot = await get(userRef);
-  
-  if (snapshot.exists()) {
-    const userData = snapshot.val();
-    // Update UI with user data
+  try {
+    const snapshot = await get(ref(database, `users/${currentUser.uid}`));
+    if (snapshot.exists()) {
+      const userData = snapshot.val();
+      console.log('User data loaded:', userData);
+    }
+  } catch (error) {
+    console.error('Error loading user data:', error);
+    showAlert('Failed to load user data', false);
   }
 }
 
@@ -254,96 +279,99 @@ function initPracticePage() {
   });
 
   if (savePracticeBtn) {
-    savePracticeBtn.addEventListener('click', async () => {
-      if (!currentUser) {
-        alert('Please login to save your practice session');
-        return;
-      }
-      
-      // Validate inputs
-      const questionsAttempted = parseInt(document.getElementById('questionsAttempted').value) || 0;
-      const correct = parseInt(document.getElementById('correct').value) || 0;
-      const incorrect = parseInt(document.getElementById('incorrect').value) || 0;
-      const missed = parseInt(document.getElementById('missed').value) || 0;
-      
-      if (questionsAttempted === 0) {
-        alert('Please enter the number of questions attempted');
-        return;
-      }
-      
-      if ((correct + incorrect + missed) > questionsAttempted) {
-        alert('The sum of correct, incorrect and missed questions cannot exceed total questions attempted');
-        return;
-      }
-      
-      const practiceData = {
-        type: practiceType.value,
-        date: document.getElementById('date').value,
-        questionsAttempted: questionsAttempted,
-        correct: correct,
-        incorrect: incorrect,
-        missed: missed,
-        mistakes: document.getElementById('mistakes').value || '',
-        createdAt: new Date().toISOString()
-      };
-      
-      // Add subject/chapter data based on type
-      switch(practiceType.value) {
-        case 'chapter':
-          practiceData.subject = subjectSelect.value;
-          practiceData.chapter = document.getElementById('chapter').value;
-          if (!practiceData.chapter) {
-            alert('Please select a chapter');
-            return;
-          }
-          break;
-          
-        case 'multiple':
-          practiceData.subject = subjectSelect.value;
-          const checkedChapters = Array.from(
-            document.querySelectorAll('#chaptersChecklist input:checked')
-          ).map(el => el.value);
-          practiceData.chapters = checkedChapters;
-          if (checkedChapters.length === 0) {
-            alert('Please select at least one chapter');
-            return;
-          }
-          break;
-          
-        case 'subject':
-          practiceData.subject = subjectSelect.value;
-          if (!practiceData.subject) {
-            alert('Please select a subject');
-            return;
-          }
-          break;
-          
-        case 'syllabus':
-          // No additional data needed
-          break;
-          
-        default:
-          alert('Please select a practice type');
-          return;
-      }
-      
-      try {
-        const newPracticeRef = push(ref(database, `users/${currentUser.uid}/practiceSessions`));
-        await set(newPracticeRef, practiceData);
-        alert('Practice session saved successfully!');
-        resetPracticeForm();
-        loadPracticeHistory();
-      } catch (error) {
-        console.error('Error saving practice session:', error);
-        alert('Failed to save practice session: ' + error.message);
-      }
-    });
+    savePracticeBtn.addEventListener('click', savePracticeSession);
   }
   
   // Load practice history if on practice page
   if (document.getElementById('practiceHistory')) {
     loadPracticeHistory();
     document.getElementById('practiceHistory').style.display = 'block';
+  }
+}
+
+async function savePracticeSession() {
+  if (!currentUser) {
+    showAlert('Please login to save your practice session', false);
+    return;
+  }
+  
+  const practiceType = document.getElementById('practiceType').value;
+  const questionsAttempted = parseInt(document.getElementById('questionsAttempted').value) || 0;
+  const correct = parseInt(document.getElementById('correct').value) || 0;
+  const incorrect = parseInt(document.getElementById('incorrect').value) || 0;
+  const missed = parseInt(document.getElementById('missed').value) || 0;
+  
+  if (!practiceType) {
+    showAlert('Please select a practice type', false);
+    return;
+  }
+  
+  if (questionsAttempted === 0) {
+    showAlert('Please enter the number of questions attempted', false);
+    return;
+  }
+  
+  if ((correct + incorrect + missed) > questionsAttempted) {
+    showAlert('The sum of correct, incorrect and missed questions cannot exceed total questions attempted', false);
+    return;
+  }
+  
+  const practiceData = {
+    type: practiceType,
+    date: document.getElementById('date').value,
+    questionsAttempted: questionsAttempted,
+    correct: correct,
+    incorrect: incorrect,
+    missed: missed,
+    mistakes: document.getElementById('mistakes').value || '',
+    createdAt: new Date().toISOString()
+  };
+  
+  // Add subject/chapter data based on type
+  switch(practiceType) {
+    case 'chapter':
+      practiceData.subject = document.getElementById('subject').value;
+      practiceData.chapter = document.getElementById('chapter').value;
+      if (!practiceData.chapter) {
+        showAlert('Please select a chapter', false);
+        return;
+      }
+      break;
+      
+    case 'multiple':
+      practiceData.subject = document.getElementById('subject').value;
+      const checkedChapters = Array.from(
+        document.querySelectorAll('#chaptersChecklist input:checked')
+      ).map(el => el.value);
+      practiceData.chapters = checkedChapters;
+      if (checkedChapters.length === 0) {
+        showAlert('Please select at least one chapter', false);
+        return;
+      }
+      break;
+      
+    case 'subject':
+      practiceData.subject = document.getElementById('subject').value;
+      if (!practiceData.subject) {
+        showAlert('Please select a subject', false);
+        return;
+      }
+      break;
+      
+    case 'syllabus':
+      // No additional data needed
+      break;
+  }
+  
+  try {
+    const newPracticeRef = push(ref(database, `users/${currentUser.uid}/practiceSessions`));
+    await set(newPracticeRef, practiceData);
+    showAlert('Practice session saved successfully!');
+    resetPracticeForm();
+    loadPracticeHistory();
+  } catch (error) {
+    console.error('Error saving practice session:', error);
+    showAlert('Failed to save practice session: ' + error.message, false);
   }
 }
 
@@ -362,6 +390,143 @@ function resetPracticeForm() {
   document.getElementById('incorrect').value = '';
   document.getElementById('missed').value = '';
   document.getElementById('mistakes').value = '';
+}
+
+function loadChaptersForSubject(subject, targetElementId) {
+  if (!chaptersData) return;
+  
+  const chapterSelect = document.getElementById(targetElementId);
+  chapterSelect.innerHTML = '<option value="">Select Chapter</option>';
+  
+  let chapters = [];
+  if (subject === 'physics') {
+    chapters = chaptersData.physics;
+  } else if (subject === 'botany') {
+    chapters = chaptersData.botany;
+  } else if (subject === 'zoology') {
+    chapters = chaptersData.zoology;
+  } else if (subject === 'chemistry') {
+    chapters = [
+      ...chaptersData.chemistry.physical,
+      ...chaptersData.chemistry.inorganic,
+      ...chaptersData.chemistry.organic
+    ];
+  }
+  
+  chapters.forEach(chapter => {
+    const option = document.createElement('option');
+    option.value = chapter;
+    option.textContent = chapter;
+    chapterSelect.appendChild(option);
+  });
+}
+
+function loadChaptersChecklist(subject) {
+  if (!chaptersData) return;
+  
+  const checklist = document.getElementById('chaptersChecklist');
+  checklist.innerHTML = '';
+  
+  let chapters = [];
+  if (subject === 'physics') {
+    chapters = chaptersData.physics;
+  } else if (subject === 'botany') {
+    chapters = chaptersData.botany;
+  } else if (subject === 'zoology') {
+    chapters = chaptersData.zoology;
+  } else if (subject === 'chemistry') {
+    checklist.innerHTML = `
+      <h4>Physical Chemistry</h4>
+      ${chaptersData.chemistry.physical.map(chapter => `
+        <div class="checklist-item">
+          <label>
+            <input type="checkbox" value="${chapter}">
+            ${chapter}
+          </label>
+        </div>
+      `).join('')}
+      <h4>Inorganic Chemistry</h4>
+      ${chaptersData.chemistry.inorganic.map(chapter => `
+        <div class="checklist-item">
+          <label>
+            <input type="checkbox" value="${chapter}">
+            ${chapter}
+          </label>
+        </div>
+      `).join('')}
+      <h4>Organic Chemistry</h4>
+      ${chaptersData.chemistry.organic.map(chapter => `
+        <div class="checklist-item">
+          <label>
+            <input type="checkbox" value="${chapter}">
+            ${chapter}
+          </label>
+        </div>
+      `).join('')}
+    `;
+    return;
+  }
+  
+  chapters.forEach(chapter => {
+    const item = document.createElement('div');
+    item.className = 'checklist-item';
+    item.innerHTML = `
+      <label>
+        <input type="checkbox" value="${chapter}">
+        ${chapter}
+      </label>
+    `;
+    checklist.appendChild(item);
+  });
+}
+
+async function loadPracticeHistory() {
+  if (!currentUser) return;
+  
+  try {
+    const snapshot = await get(ref(database, `users/${currentUser.uid}/practiceSessions`));
+    if (snapshot.exists()) {
+      const sessions = snapshot.val();
+      const practiceList = document.getElementById('practiceList');
+      practiceList.innerHTML = '';
+      
+      Object.entries(sessions).forEach(([key, session]) => {
+        let sessionTitle = '';
+        if (session.type === 'chapter') {
+          sessionTitle = `${session.subject} - ${session.chapter}`;
+        } else if (session.type === 'multiple') {
+          sessionTitle = `${session.subject} - Multiple Chapters`;
+        } else if (session.type === 'subject') {
+          sessionTitle = `Full ${session.subject}`;
+        } else {
+          sessionTitle = 'Full Syllabus';
+        }
+        
+        const sessionItem = document.createElement('div');
+        sessionItem.className = 'history-item';
+        sessionItem.innerHTML = `
+          <div class="history-item-header">
+            <span class="history-item-title">${sessionTitle}</span>
+            <span class="history-item-date">${new Date(session.date).toLocaleDateString()}</span>
+          </div>
+          <div class="history-item-details">
+            <p>Questions Attempted: ${session.questionsAttempted}</p>
+            <p>Correct: ${session.correct}, Incorrect: ${session.incorrect}, Missed: ${session.missed}</p>
+            ${session.mistakes ? `<p>Mistakes: ${session.mistakes}</p>` : ''}
+          </div>
+        `;
+        
+        sessionItem.addEventListener('click', () => {
+          sessionItem.classList.toggle('active');
+        });
+        
+        practiceList.appendChild(sessionItem);
+      });
+    }
+  } catch (error) {
+    console.error('Error loading practice history:', error);
+    showAlert('Failed to load practice history', false);
+  }
 }
 
 function initTestAnalysisPage() {
@@ -391,81 +556,7 @@ function initTestAnalysisPage() {
   // Save test analysis
   const saveTestBtn = document.getElementById('saveTest');
   if (saveTestBtn) {
-    saveTestBtn.addEventListener('click', async () => {
-      if (!currentUser) {
-        alert('Please login to save your test analysis');
-        return;
-      }
-      
-      const testName = document.getElementById('testName').value.trim();
-      const testDate = document.getElementById('testDate').value;
-      const testSubjectValue = document.getElementById('testSubject').value;
-      const totalQuestions = parseInt(document.getElementById('totalQuestions').value) || 0;
-      const correct = parseInt(document.getElementById('testCorrect').value) || 0;
-      const incorrect = parseInt(document.getElementById('testIncorrect').value) || 0;
-      const missed = parseInt(document.getElementById('testMissed').value) || 0;
-      
-      // Validation
-      if (!testName) {
-        alert('Please enter test name');
-        return;
-      }
-      
-      if (!testDate) {
-        alert('Please select test date');
-        return;
-      }
-      
-      if (!testSubjectValue) {
-        alert('Please select subject');
-        return;
-      }
-      
-      if (totalQuestions <= 0) {
-        alert('Please enter total number of questions');
-        return;
-      }
-      
-      if ((correct + incorrect + missed) > totalQuestions) {
-        alert('The sum of correct, incorrect and missed questions cannot exceed total questions');
-        return;
-      }
-      
-      const testData = {
-        name: testName,
-        date: testDate,
-        subject: testSubjectValue,
-        totalQuestions: totalQuestions,
-        correct: correct,
-        incorrect: incorrect,
-        missed: missed,
-        score: (correct * 4) - (incorrect * 1),
-        percentage: totalQuestions > 0 ? ((correct / totalQuestions) * 100).toFixed(2) : 0,
-        mistakes: document.getElementById('testMistakes').value || '',
-        createdAt: new Date().toISOString()
-      };
-      
-      // Add chapters if selected
-      if (testSubjectValue && testSubjectValue !== 'full') {
-        const checkedChapters = Array.from(
-          document.querySelectorAll('#testChaptersChecklist input:checked')
-        ).map(el => el.value);
-        if (checkedChapters.length > 0) {
-          testData.chapters = checkedChapters;
-        }
-      }
-      
-      try {
-        const newTestRef = push(ref(database, `users/${currentUser.uid}/tests`));
-        await set(newTestRef, testData);
-        alert('Test analysis saved successfully!');
-        resetTestForm();
-        loadTestHistory();
-      } catch (error) {
-        console.error('Error saving test analysis:', error);
-        alert('Failed to save test analysis: ' + error.message);
-      }
-    });
+    saveTestBtn.addEventListener('click', saveTestAnalysis);
   }
   
   // Load test history
@@ -506,6 +597,94 @@ function loadChaptersChecklistForTest(subject) {
   });
 }
 
+function calculateTestScore() {
+  const correct = parseInt(document.getElementById('testCorrect').value) || 0;
+  const incorrect = parseInt(document.getElementById('testIncorrect').value) || 0;
+  const total = parseInt(document.getElementById('totalQuestions').value) || 1;
+  
+  const score = (correct * 4) - (incorrect * 1);
+  const percentage = ((correct / total) * 100).toFixed(2);
+  
+  document.getElementById('scoreValue').textContent = score;
+  document.getElementById('percentageValue').textContent = `${percentage}%`;
+}
+
+async function saveTestAnalysis() {
+  if (!currentUser) {
+    showAlert('Please login to save your test analysis', false);
+    return;
+  }
+  
+  const testName = document.getElementById('testName').value.trim();
+  const testDate = document.getElementById('testDate').value;
+  const testSubjectValue = document.getElementById('testSubject').value;
+  const totalQuestions = parseInt(document.getElementById('totalQuestions').value) || 0;
+  const correct = parseInt(document.getElementById('testCorrect').value) || 0;
+  const incorrect = parseInt(document.getElementById('testIncorrect').value) || 0;
+  const missed = parseInt(document.getElementById('testMissed').value) || 0;
+  
+  // Validation
+  if (!testName) {
+    showAlert('Please enter test name', false);
+    return;
+  }
+  
+  if (!testDate) {
+    showAlert('Please select test date', false);
+    return;
+  }
+  
+  if (!testSubjectValue) {
+    showAlert('Please select subject', false);
+    return;
+  }
+  
+  if (totalQuestions <= 0) {
+    showAlert('Please enter total number of questions', false);
+    return;
+  }
+  
+  if ((correct + incorrect + missed) > totalQuestions) {
+    showAlert('The sum of correct, incorrect and missed questions cannot exceed total questions', false);
+    return;
+  }
+  
+  const testData = {
+    name: testName,
+    date: testDate,
+    subject: testSubjectValue,
+    totalQuestions: totalQuestions,
+    correct: correct,
+    incorrect: incorrect,
+    missed: missed,
+    score: (correct * 4) - (incorrect * 1),
+    percentage: totalQuestions > 0 ? ((correct / totalQuestions) * 100).toFixed(2) : 0,
+    mistakes: document.getElementById('testMistakes').value || '',
+    createdAt: new Date().toISOString()
+  };
+  
+  // Add chapters if selected
+  if (testSubjectValue && testSubjectValue !== 'full') {
+    const checkedChapters = Array.from(
+      document.querySelectorAll('#testChaptersChecklist input:checked')
+    ).map(el => el.value);
+    if (checkedChapters.length > 0) {
+      testData.chapters = checkedChapters;
+    }
+  }
+  
+  try {
+    const newTestRef = push(ref(database, `users/${currentUser.uid}/tests`));
+    await set(newTestRef, testData);
+    showAlert('Test analysis saved successfully!');
+    resetTestForm();
+    loadTestHistory();
+  } catch (error) {
+    console.error('Error saving test analysis:', error);
+    showAlert('Failed to save test analysis: ' + error.message, false);
+  }
+}
+
 function resetTestForm() {
   document.getElementById('testName').value = '';
   document.getElementById('testDate').valueAsDate = new Date();
@@ -518,6 +697,45 @@ function resetTestForm() {
   document.getElementById('testMistakes').value = '';
   document.getElementById('scoreValue').textContent = '0';
   document.getElementById('percentageValue').textContent = '0%';
+}
+
+async function loadTestHistory() {
+  if (!currentUser) return;
+  
+  try {
+    const snapshot = await get(ref(database, `users/${currentUser.uid}/tests`));
+    if (snapshot.exists()) {
+      const tests = snapshot.val();
+      const testList = document.getElementById('testList');
+      testList.innerHTML = '';
+      
+      Object.entries(tests).forEach(([key, test]) => {
+        const testItem = document.createElement('div');
+        testItem.className = 'history-item';
+        testItem.innerHTML = `
+          <div class="history-item-header">
+            <span class="history-item-title">${test.name}</span>
+            <span class="history-item-date">${new Date(test.date).toLocaleDateString()}</span>
+          </div>
+          <div class="history-item-details">
+            <p>Subject: ${test.subject}</p>
+            <p>Score: ${test.score} (${test.percentage}%)</p>
+            <p>Correct: ${test.correct}, Incorrect: ${test.incorrect}, Missed: ${test.missed}</p>
+            ${test.mistakes ? `<p>Mistakes: ${test.mistakes}</p>` : ''}
+          </div>
+        `;
+        
+        testItem.addEventListener('click', () => {
+          testItem.classList.toggle('active');
+        });
+        
+        testList.appendChild(testItem);
+      });
+    }
+  } catch (error) {
+    console.error('Error loading test history:', error);
+    showAlert('Failed to load test history', false);
+  }
 }
 
 function initPlanPage() {
@@ -543,7 +761,7 @@ function initPlanPage() {
 function generateWeeklyPlan() {
   const startDate = document.getElementById('startDate').value;
   if (!startDate) {
-    alert('Please select a start date');
+    showAlert('Please select a start date', false);
     return;
   }
   
@@ -669,13 +887,13 @@ function initializeDayControls(dayElement, dayIndex) {
 
 async function saveWeeklyPlan() {
   if (!currentUser) {
-    alert('Please login to save your weekly plan');
+    showAlert('Please login to save your weekly plan', false);
     return;
   }
   
   const startDate = document.getElementById('startDate').value;
   if (!startDate) {
-    alert('Please select a start date');
+    showAlert('Please select a start date', false);
     return;
   }
   
@@ -692,12 +910,11 @@ async function saveWeeklyPlan() {
   planDays.forEach((dayElement, index) => {
     const dayDate = new Date(start);
     dayDate.setDate(start.getDate() + index);
-    
     const dateStr = dayDate.toISOString().split('T')[0];
-    const subjects = dayElement.querySelectorAll('.plan-subject');
     
     planData.days[dateStr] = {};
     
+    const subjects = dayElement.querySelectorAll('.plan-subject');
     subjects.forEach((subjectElement, subIndex) => {
       const subject = subjectElement.querySelector('.subject-select').value;
       const option = subjectElement.querySelector('.option-select').value;
@@ -727,22 +944,85 @@ async function saveWeeklyPlan() {
         }
       }
     });
-    
-    // Remove day if no subjects
-    if (Object.keys(planData.days[dateStr]).length === 0) {
-      delete planData.days[dateStr];
-    }
   });
-  
+
   try {
     const newPlanRef = push(ref(database, `users/${currentUser.uid}/weeklyPlans`));
     await set(newPlanRef, planData);
-    alert('Weekly plan saved successfully!');
+    showAlert('Weekly plan saved successfully!');
     loadCurrentPlan();
   } catch (error) {
     console.error('Error saving weekly plan:', error);
-    alert('Failed to save weekly plan: ' + error.message);
+    showAlert('Failed to save weekly plan: ' + error.message, false);
   }
+}
+
+async function loadCurrentPlan() {
+  if (!currentUser) return;
+  
+  try {
+    const snapshot = await get(ref(database, `users/${currentUser.uid}/weeklyPlans`));
+    if (snapshot.exists()) {
+      const plans = snapshot.val();
+      const currentPlan = document.getElementById('planDisplay');
+      currentPlan.innerHTML = '';
+      
+      // Get the most recent plan
+      const recentPlanKey = Object.keys(plans).pop();
+      const recentPlan = plans[recentPlanKey];
+      
+      Object.entries(recentPlan.days).forEach(([date, subjects]) => {
+        const dayElement = document.createElement('div');
+        dayElement.className = 'plan-day-display';
+        dayElement.innerHTML = `
+          <h3>${new Date(date).toLocaleDateString('en-US', { weekday: 'long' })} (${new Date(date).toLocaleDateString()})</h3>
+          <div class="day-subjects">
+            ${Object.values(subjects).map(subject => `
+              <div class="day-subject">
+                <strong>${subject.subject}</strong>: 
+                ${subject.type === 'text' ? subject.content : subject.chapters.join(', ')}
+              </div>
+            `).join('')}
+          </div>
+        `;
+        
+        currentPlan.appendChild(dayElement);
+      });
+      
+      document.getElementById('currentPlan').style.display = 'block';
+    }
+  } catch (error) {
+    console.error('Error loading current plan:', error);
+    showAlert('Failed to load current plan', false);
+  }
+}
+
+function loadChaptersForPlan(subject, targetElement) {
+  if (!chaptersData) return;
+  
+  targetElement.innerHTML = '';
+  
+  let chapters = [];
+  if (subject === 'physics') {
+    chapters = chaptersData.physics;
+  } else if (subject === 'botany') {
+    chapters = chaptersData.botany;
+  } else if (subject === 'zoology') {
+    chapters = chaptersData.zoology;
+  } else if (subject === 'chemistry') {
+    chapters = [
+      ...chaptersData.chemistry.physical,
+      ...chaptersData.chemistry.inorganic,
+      ...chaptersData.chemistry.organic
+    ];
+  }
+  
+  chapters.forEach(chapter => {
+    const option = document.createElement('option');
+    option.value = chapter;
+    option.textContent = chapter;
+    targetElement.appendChild(option);
+  });
 }
 
 function initTrackPage() {
@@ -832,6 +1112,7 @@ async function loadChaptersProgress(subject) {
     updateProgressStats(subject);
   } catch (error) {
     console.error('Error loading chapters progress:', error);
+    showAlert('Failed to load chapters progress', false);
   }
 }
 
@@ -847,6 +1128,7 @@ async function updateChapterProgress(subject, chapter, type, completed) {
     loadChaptersProgress(subject);
   } catch (error) {
     console.error('Error updating chapter progress:', error);
+    showAlert('Failed to update progress', false);
   }
 }
 
@@ -898,6 +1180,7 @@ async function updateProgressStats(subject) {
     document.getElementById('totalProgressBar').style.width = `${totalPercentage}%`;
   } catch (error) {
     console.error('Error updating progress stats:', error);
+    showAlert('Failed to update progress stats', false);
   }
 }
 
@@ -906,11 +1189,11 @@ async function resetProgress() {
   
   try {
     await remove(ref(database, `users/${currentUser.uid}/progress`));
-    alert('Progress reset successfully');
+    showAlert('Progress reset successfully');
     loadChaptersProgress(document.querySelector('.tab-btn.active').dataset.subject);
   } catch (error) {
     console.error('Error resetting progress:', error);
-    alert('Failed to reset progress');
+    showAlert('Failed to reset progress', false);
   }
 }
 
@@ -987,6 +1270,7 @@ async function loadProfileData() {
     }
   } catch (error) {
     console.error('Error loading profile data:', error);
+    showAlert('Failed to load profile data', false);
   }
 }
 
@@ -1048,108 +1332,6 @@ function initializePerformanceChart() {
   // In a real app, you would load actual test data and update the chart
 }
 
-// Helper Functions
-function loadChaptersForSubject(subject, targetElementId) {
-  if (!chaptersData) return;
-  
-  const chapterSelect = document.getElementById(targetElementId);
-  chapterSelect.innerHTML = '<option value="">Select Chapter</option>';
-  
-  let chapters = [];
-  if (subject === 'physics') {
-    chapters = chaptersData.physics;
-  } else if (subject === 'botany') {
-    chapters = chaptersData.botany;
-  } else if (subject === 'zoology') {
-    chapters = chaptersData.zoology;
-  } else if (subject === 'chemistry') {
-    // For chemistry, we need to combine all subcategories
-    chapters = [
-      ...chaptersData.chemistry.physical,
-      ...chaptersData.chemistry.inorganic,
-      ...chaptersData.chemistry.organic
-    ];
-  }
-  
-  chapters.forEach(chapter => {
-    const option = document.createElement('option');
-    option.value = chapter;
-    option.textContent = chapter;
-    chapterSelect.appendChild(option);
-  });
-}
-
-function loadChaptersChecklist(subject) {
-  if (!chaptersData) return;
-  
-  const checklist = document.getElementById('chaptersChecklist');
-  checklist.innerHTML = '';
-  
-  let chapters = [];
-  if (subject === 'physics') {
-    chapters = chaptersData.physics;
-  } else if (subject === 'botany') {
-    chapters = chaptersData.botany;
-  } else if (subject === 'zoology') {
-    chapters = chaptersData.zoology;
-  } else if (subject === 'chemistry') {
-    checklist.innerHTML = `
-      <h4>Physical Chemistry</h4>
-      ${chaptersData.chemistry.physical.map(chapter => `
-        <div class="checklist-item">
-          <label>
-            <input type="checkbox" value="${chapter}">
-            ${chapter}
-          </label>
-        </div>
-      `).join('')}
-      <h4>Inorganic Chemistry</h4>
-      ${chaptersData.chemistry.inorganic.map(chapter => `
-        <div class="checklist-item">
-          <label>
-            <input type="checkbox" value="${chapter}">
-            ${chapter}
-          </label>
-        </div>
-      `).join('')}
-      <h4>Organic Chemistry</h4>
-      ${chaptersData.chemistry.organic.map(chapter => `
-        <div class="checklist-item">
-          <label>
-            <input type="checkbox" value="${chapter}">
-            ${chapter}
-          </label>
-        </div>
-      `).join('')}
-    `;
-    return;
-  }
-  
-  chapters.forEach(chapter => {
-    const item = document.createElement('div');
-    item.className = 'checklist-item';
-    item.innerHTML = `
-      <label>
-        <input type="checkbox" value="${chapter}">
-        ${chapter}
-      </label>
-    `;
-    checklist.appendChild(item);
-  });
-}
-
-function calculateTestScore() {
-  const correct = parseInt(document.getElementById('testCorrect').value) || 0;
-  const incorrect = parseInt(document.getElementById('testIncorrect').value) || 0;
-  const total = parseInt(document.getElementById('totalQuestions').value) || 1;
-  
-  const score = (correct * 4) - (incorrect * 1);
-  const percentage = ((correct / total) * 100).toFixed(2);
-  
-  document.getElementById('scoreValue').textContent = score;
-  document.getElementById('percentageValue').textContent = `${percentage}%`;
-}
-
 async function loadWeeklyPlans() {
   if (!currentUser) return;
   
@@ -1179,6 +1361,7 @@ async function loadWeeklyPlans() {
     }
   } catch (error) {
     console.error('Error loading weekly plans:', error);
+    showAlert('Failed to load weekly plans', false);
   }
 }
 
@@ -1210,6 +1393,7 @@ async function loadRecentTests() {
     }
   } catch (error) {
     console.error('Error loading recent tests:', error);
+    showAlert('Failed to load recent tests', false);
   }
 }
 
@@ -1253,158 +1437,6 @@ async function loadPracticeSessions() {
     }
   } catch (error) {
     console.error('Error loading practice sessions:', error);
+    showAlert('Failed to load practice sessions', false);
   }
-}
-
-async function loadPracticeHistory() {
-  if (!currentUser) return;
-  
-  try {
-    const snapshot = await get(ref(database, `users/${currentUser.uid}/practiceSessions`));
-    if (snapshot.exists()) {
-      const sessions = snapshot.val();
-      const practiceList = document.getElementById('practiceList');
-      practiceList.innerHTML = '';
-      
-      Object.entries(sessions).forEach(([key, session]) => {
-        let sessionTitle = '';
-        if (session.type === 'chapter') {
-          sessionTitle = `${session.subject} - ${session.chapter}`;
-        } else if (session.type === 'multiple') {
-          sessionTitle = `${session.subject} - Multiple Chapters`;
-        } else if (session.type === 'subject') {
-          sessionTitle = `Full ${session.subject}`;
-        } else {
-          sessionTitle = 'Full Syllabus';
-        }
-        
-        const sessionItem = document.createElement('div');
-        sessionItem.className = 'history-item';
-        sessionItem.innerHTML = `
-          <div class="history-item-header">
-            <span class="history-item-title">${sessionTitle}</span>
-            <span class="history-item-date">${new Date(session.date).toLocaleDateString()}</span>
-          </div>
-          <div class="history-item-details">
-            <p>Questions Attempted: ${session.questionsAttempted}</p>
-            <p>Correct: ${session.correct}, Incorrect: ${session.incorrect}, Missed: ${session.missed}</p>
-            ${session.mistakes ? `<p>Mistakes: ${session.mistakes}</p>` : ''}
-          </div>
-        `;
-        
-        sessionItem.addEventListener('click', () => {
-          sessionItem.classList.toggle('active');
-        });
-        
-        practiceList.appendChild(sessionItem);
-      });
-    }
-  } catch (error) {
-    console.error('Error loading practice history:', error);
-  }
-}
-
-async function loadTestHistory() {
-  if (!currentUser) return;
-  
-  try {
-    const snapshot = await get(ref(database, `users/${currentUser.uid}/tests`));
-    if (snapshot.exists()) {
-      const tests = snapshot.val();
-      const testList = document.getElementById('testList');
-      testList.innerHTML = '';
-      
-      Object.entries(tests).forEach(([key, test]) => {
-        const testItem = document.createElement('div');
-        testItem.className = 'history-item';
-        testItem.innerHTML = `
-          <div class="history-item-header">
-            <span class="history-item-title">${test.name}</span>
-            <span class="history-item-date">${new Date(test.date).toLocaleDateString()}</span>
-          </div>
-          <div class="history-item-details">
-            <p>Subject: ${test.subject}</p>
-            <p>Score: ${test.score} (${test.percentage}%)</p>
-            <p>Correct: ${test.correct}, Incorrect: ${test.incorrect}, Missed: ${test.missed}</p>
-            ${test.mistakes ? `<p>Mistakes: ${test.mistakes}</p>` : ''}
-          </div>
-        `;
-        
-        testItem.addEventListener('click', () => {
-          testItem.classList.toggle('active');
-        });
-        
-        testList.appendChild(testItem);
-      });
-    }
-  } catch (error) {
-    console.error('Error loading test history:', error);
-  }
-}
-
-async function loadCurrentPlan() {
-  if (!currentUser) return;
-  
-  try {
-    const snapshot = await get(ref(database, `users/${currentUser.uid}/weeklyPlans`));
-    if (snapshot.exists()) {
-      const plans = snapshot.val();
-      const currentPlan = document.getElementById('planDisplay');
-      currentPlan.innerHTML = '';
-      
-      // Get the most recent plan
-      const recentPlanKey = Object.keys(plans).pop();
-      const recentPlan = plans[recentPlanKey];
-      
-      Object.entries(recentPlan.days).forEach(([date, subjects]) => {
-        const dayElement = document.createElement('div');
-        dayElement.className = 'plan-day-display';
-        dayElement.innerHTML = `
-          <h3>${new Date(date).toLocaleDateString('en-US', { weekday: 'long' })} (${new Date(date).toLocaleDateString()})</h3>
-          <div class="day-subjects">
-            ${Object.values(subjects).map(subject => `
-              <div class="day-subject">
-                <strong>${subject.subject}</strong>: 
-                ${subject.type === 'text' ? subject.content : subject.chapters.join(', ')}
-              </div>
-            `).join('')}
-          </div>
-        `;
-        
-        currentPlan.appendChild(dayElement);
-      });
-      
-      document.getElementById('currentPlan').style.display = 'block';
-    }
-  } catch (error) {
-    console.error('Error loading current plan:', error);
-  }
-}
-
-function loadChaptersForPlan(subject, targetElement) {
-  if (!chaptersData) return;
-  
-  targetElement.innerHTML = '';
-  
-  let chapters = [];
-  if (subject === 'physics') {
-    chapters = chaptersData.physics;
-  } else if (subject === 'botany') {
-    chapters = chaptersData.botany;
-  } else if (subject === 'zoology') {
-    chapters = chaptersData.zoology;
-  } else if (subject === 'chemistry') {
-    chapters = [
-      ...chaptersData.chemistry.physical,
-      ...chaptersData.chemistry.inorganic,
-      ...chaptersData.chemistry.organic
-    ];
-  }
-  
-  chapters.forEach(chapter => {
-    const option = document.createElement('option');
-    option.value = chapter;
-    option.textContent = chapter;
-    targetElement.appendChild(option);
-  });
 }
