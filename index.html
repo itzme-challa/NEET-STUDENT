@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Study Tracker</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-database.js"></script>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="logo">Study Tracker</div>
+    <div class="nav-links">
+      <a href="index.html" class="active">Home</a>
+      <a href="practice.html">Practice</a>
+      <a href="testAnalysis.html">Test Analysis</a>
+      <a href="plan.html">Plan</a>
+      <a href="track.html">Track</a>
+      <a href="profile.html" id="profileLink">Profile</a>
+    </div>
+    <div class="hamburger">☰</div>
+  </nav>
+  <div class="container">
+    <header>
+      <h1>Welcome to Study Tracker</h1>
+      <div id="userProfile"></div>
+    </header>
+    <section id="weeklyPlans">
+      <h2>Users' Weekly Plans</h2>
+      <div id="plansList"></div>
+    </section>
+    <section id="testAnalysis">
+      <h2>Test Analysis</h2>
+      <div id="testsList"></div>
+    </section>
+    <section id="practiceHistory">
+      <h2>Practice History</h2>
+      <div id="practiceList"></div>
+    </section>
+    <div id="message"></div>
+  </div>
+  <footer class="bottom-nav">
+    <a href="index.html">Home</a>
+    <a href="practice.html">Practice</a>
+    <a href="testAnalysis.html">Test Analysis</a>
+    <a href="plan.html">Plan</a>
+    <a href="track.html">Track</a>
+    <a href="profile.html">Profile</a>
+  </footer>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyD54FxWUlPn03bxD0UnD0oxVcMkI9ovCeQ",
+      authDomain: "community-604af.firebaseapp.com",
+      databaseURL: "https://community-604af-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "community-604af",
+      storageBucket: "community-604af.appspot.com",
+      messagingSenderId: "735063146170",
+      appId: "1:735063146170:web:725bce2c3c64afc0f30c83",
+      measurementId: "G-7YD8RLH33Q"
+    };
+    firebase.initializeApp(firebaseConfig);
+  </script>
+  <script src="script.js"></script>
+</body>
+</html>
