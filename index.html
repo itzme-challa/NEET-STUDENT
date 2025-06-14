@@ -3,51 +3,65 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Study Tracker</title>
-  <link rel="stylesheet" href="styles.css">
+  <title>Study Tracker - Home</title>
   <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-firestore.js"></script>
   <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-database.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="styles.css">
 </head>
-<body>
-  <nav class="navbar">
-    <div class="logo">Study Tracker</div>
-    <div class="nav-links">
-      <a href="index.html" class="active">Home</a>
-      <a href="practice.html">Practice</a>
-      <a href="testAnalysis.html">Test Analysis</a>
-      <a href="plan.html">Plan</a>
-      <a href="track.html">Track</a>
-      <a href="profile.html" id="profileLink">Profile</a>
+<body class="bg-gray-100 font-sans">
+  <nav class="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-4 shadow-lg">
+    <div class="container mx-auto flex justify-between items-center">
+      <div class="text-2xl font-bold">Study Tracker</div>
+      <div class="hidden md:flex space-x-6 nav-links">
+        <a href="index.html" class="active hover:text-blue-200">Home</a>
+        <a href="practice.html" class="hover:text-blue-200">Practice</a>
+        <a href="testAnalysis.html" class="hover:text-blue-200">Test Analysis</a>
+        <a href="plan.html" class="hover:text-blue-200">Plan</a>
+        <a href="track.html" class="hover:text-blue-200">Track</a>
+        <a href="profile.html" id="profileLink" class="hover:text-blue-200">Profile</a>
+      </div>
+      <div class="md:hidden hamburger cursor-pointer text-2xl">☰</div>
     </div>
-    <div class="hamburger">☰</div>
+    <div class="nav-links-mobile md:hidden hidden flex-col bg-blue-700 p-4 space-y-2">
+      <a href="index.html" class="active hover:text-blue-200">Home</a>
+      <a href="practice.html" class="hover:text-blue-200">Practice</a>
+      <a href="testAnalysis.html" class="hover:text-blue-200">Test Analysis</a>
+      <a href="plan.html" class="hover:text-blue-200">Plan</a>
+      <a href="track.html" class="hover:text-blue-200">Track</a>
+      <a href="profile.html" id="profileLinkMobile" class="hover:text-blue-200">Profile</a>
+    </div>
   </nav>
-  <div class="container">
-    <header>
-      <h1>Welcome to Study Tracker</h1>
-      <div id="userProfile"></div>
+  <div class="container mx-auto p-6 max-w-5xl">
+    <header class="flex justify-between items-center mb-6">
+      <h1 class="text-3xl font-semibold text-gray-800">Welcome to Study Tracker</h1>
+      <div id="userProfile" class="text-lg"></div>
     </header>
-    <section id="weeklyPlans">
-      <h2>Users' Weekly Plans</h2>
-      <div id="plansList"></div>
+    <section class="bg-white p-6 rounded-lg shadow-md mb-6">
+      <h2 class="text-2xl font-semibold mb-4">Users' Weekly Plans</h2>
+      <div id="plansList" class="space-y-4 max-h-96 overflow-y-auto"></div>
     </section>
-    <section id="testAnalysis">
-      <h2>Test Analysis</h2>
-      <div id="testsList"></div>
+    <section class="bg-white p-6 rounded-lg shadow-md mb-6">
+      <h2 class="text-2xl font-semibold mb-4">Test Analysis</h2>
+      <div id="testsList" class="space-y-4 max-h-96 overflow-y-auto"></div>
     </section>
-    <section id="practiceHistory">
-      <h2>Practice History</h2>
-      <div id="practiceList"></div>
+    <section class="bg-white p-6 rounded-lg shadow-md">
+      <h2 class="text-2xl font-semibold mb-4">Practice History</h2>
+      <div id="practiceList" class="space-y-4 max-h-96 overflow-y-auto"></div>
     </section>
-    <div id="message"></div>
+    <div id="message" class="mt-4 text-center"></div>
   </div>
-  <footer class="bottom-nav">
-    <a href="index.html">Home</a>
-    <a href="practice.html">Practice</a>
-    <a href="testAnalysis.html">Test Analysis</a>
-    <a href="plan.html">Plan</a>
-    <a href="track.html">Track</a>
-    <a href="profile.html">Profile</a>
+  <footer class="bg-gray-800 text-white p-4 fixed bottom-0 w-full md:hidden">
+    <div class="container mx-auto flex justify-around">
+      <a href="index.html" class="hover:text-blue-200">Home</a>
+      <a href="practice.html" class="hover:text-blue-200">Practice</a>
+      <a href="testAnalysis.html" class="hover:text-blue-200">Test Analysis</a>
+      <a href="plan.html" class="hover:text-blue-200">Plan</a>
+      <a href="track.html" class="hover:text-blue-200">Track</a>
+      <a href="profile.html" class="hover:text-blue-200">Profile</a>
+    </div>
   </footer>
   <script>
     const firebaseConfig = {
