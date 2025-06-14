@@ -1,81 +1,89 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Study Tracker - Home</title>
-  <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-firestore.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-database.js"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="styles.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Study Planner - Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
-<body class="bg-gray-100 font-sans">
-  <nav class="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-4 shadow-lg">
-    <div class="container mx-auto flex justify-between items-center">
-      <div class="text-2xl font-bold">Study Tracker</div>
-      <div class="hidden md:flex space-x-6 nav-links">
-        <a href="index.html" class="active hover:text-blue-200">Home</a>
-        <a href="practice.html" class="hover:text-blue-200">Practice</a>
-        <a href="testAnalysis.html" class="hover:text-blue-200">Test Analysis</a>
-        <a href="plan.html" class="hover:text-blue-200">Plan</a>
-        <a href="track.html" class="hover:text-blue-200">Track</a>
-        <a href="profile.html" id="profileLink" class="hover:text-blue-200">Profile</a>
-      </div>
-      <div class="md:hidden hamburger cursor-pointer text-2xl">☰</div>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo">Study Planner</div>
+            <div class="profile-section" id="profileSection">
+                <a href="profile.html" class="login-btn">Login</a>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <section class="stats-section">
+                <div class="stat-card">
+                    <h3>Weekly Plans</h3>
+                    <div class="stat-value" id="weeklyPlansCount">0</div>
+                    <div class="stat-list" id="weeklyPlansList"></div>
+                </div>
+                
+                <div class="stat-card">
+                    <h3>Recent Tests</h3>
+                    <div class="stat-value" id="recentTestsCount">0</div>
+                    <div class="stat-list" id="recentTestsList"></div>
+                </div>
+                
+                <div class="stat-card">
+                    <h3>Practice Sessions</h3>
+                    <div class="stat-value" id="practiceSessionsCount">0</div>
+                    <div class="stat-list" id="practiceSessionsList"></div>
+                </div>
+            </section>
+
+            <section class="quick-links">
+                <h2>Quick Access</h2>
+                <div class="links-grid">
+                    <a href="practice.html" class="link-card">
+                        <i class="fas fa-book-open"></i>
+                        <span>Practice</span>
+                    </a>
+                    <a href="testAnalysis.html" class="link-card">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Test Analysis</span>
+                    </a>
+                    <a href="plan.html" class="link-card">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span>Plan Week</span>
+                    </a>
+                    <a href="track.html" class="link-card">
+                        <i class="fas fa-tasks"></i>
+                        <span>Track Progress</span>
+                    </a>
+                </div>
+            </section>
+        </main>
+
+        <nav class="bottom-nav">
+            <a href="index.html" class="nav-item active">
+                <i class="fas fa-home"></i>
+                <span>Home</span>
+            </a>
+            <a href="practice.html" class="nav-item">
+                <i class="fas fa-book-open"></i>
+                <span>Practice</span>
+            </a>
+            <a href="testAnalysis.html" class="nav-item">
+                <i class="fas fa-chart-line"></i>
+                <span>Tests</span>
+            </a>
+            <a href="plan.html" class="nav-item">
+                <i class="fas fa-calendar-alt"></i>
+                <span>Plan</span>
+            </a>
+            <a href="track.html" class="nav-item">
+                <i class="fas fa-tasks"></i>
+                <span>Track</span>
+            </a>
+        </nav>
     </div>
-    <div class="nav-links-mobile md:hidden hidden flex-col bg-blue-700 p-4 space-y-2">
-      <a href="index.html" class="active hover:text-blue-200">Home</a>
-      <a href="practice.html" class="hover:text-blue-200">Practice</a>
-      <a href="testAnalysis.html" class="hover:text-blue-200">Test Analysis</a>
-      <a href="plan.html" class="hover:text-blue-200">Plan</a>
-      <a href="track.html" class="hover:text-blue-200">Track</a>
-      <a href="profile.html" id="profileLinkMobile" class="hover:text-blue-200">Profile</a>
-    </div>
-  </nav>
-  <div class="container mx-auto p-6 max-w-5xl">
-    <header class="flex justify-between items-center mb-6">
-      <h1 class="text-3xl font-semibold text-gray-800">Welcome to Study Tracker</h1>
-      <div id="userProfile" class="text-lg"></div>
-    </header>
-    <section class="bg-white p-6 rounded-lg shadow-md mb-6">
-      <h2 class="text-2xl font-semibold mb-4">Users' Weekly Plans</h2>
-      <div id="plansList" class="space-y-4 max-h-96 overflow-y-auto"></div>
-    </section>
-    <section class="bg-white p-6 rounded-lg shadow-md mb-6">
-      <h2 class="text-2xl font-semibold mb-4">Test Analysis</h2>
-      <div id="testsList" class="space-y-4 max-h-96 overflow-y-auto"></div>
-    </section>
-    <section class="bg-white p-6 rounded-lg shadow-md">
-      <h2 class="text-2xl font-semibold mb-4">Practice History</h2>
-      <div id="practiceList" class="space-y-4 max-h-96 overflow-y-auto"></div>
-    </section>
-    <div id="message" class="mt-4 text-center"></div>
-  </div>
-  <footer class="bg-gray-800 text-white p-4 fixed bottom-0 w-full md:hidden">
-    <div class="container mx-auto flex justify-around">
-      <a href="index.html" class="hover:text-blue-200">Home</a>
-      <a href="practice.html" class="hover:text-blue-200">Practice</a>
-      <a href="testAnalysis.html" class="hover:text-blue-200">Test Analysis</a>
-      <a href="plan.html" class="hover:text-blue-200">Plan</a>
-      <a href="track.html" class="hover:text-blue-200">Track</a>
-      <a href="profile.html" class="hover:text-blue-200">Profile</a>
-    </div>
-  </footer>
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyD54FxWUlPn03bxD0UnD0oxVcMkI9ovCeQ",
-      authDomain: "community-604af.firebaseapp.com",
-      databaseURL: "https://community-604af-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "community-604af",
-      storageBucket: "community-604af.appspot.com",
-      messagingSenderId: "735063146170",
-      appId: "1:735063146170:web:725bce2c3c64afc0f30c83",
-      measurementId: "G-7YD8RLH33Q"
-    };
-    firebase.initializeApp(firebaseConfig);
-  </script>
-  <script src="script.js"></script>
+
+    <script type="module" src="script.js"></script>
 </body>
 </html>
