@@ -817,4 +817,420 @@ function initializeDayControls(dayElement, dayIndex) {
   
   // Remove subject button if exists
   const removeBtn = subjectsContainer.querySelector('.remove-subject');
-  if (removeBtn
+  if (removeBtn) {
+    removeBtn.addEventListener('click', () => {
+      subjectsContainer.removeChild(removeBtn.parentElement);
+    });
+  }
+}
+
+function loadChaptersForPlan(subject, targetElement) {
+  if (!chaptersData) return;
+  
+  targetElement.innerHTML = '';
+  
+  let chapters = [];
+  if (subject === 'physics') {
+    chapters = chaptersData.physics;
+  } else if (subject === 'botany') {
+    chapters = chaptersData.botany;
+  } else if (subject === 'zoology') {
+    chapters = chaptersData.zoology;
+  } else if (subject === 'chemistry') {
+    // For chemistry, we need to combine all subcategories
+    chapters = [
+      ...chaptersData.chemistry.physical,
+      ...chaptersData.chemistry.inorganic,
+      ...chaptersData.chemistry.organic
+    ];
+  }
+  
+  chapters.forEach(chapter => {
+    const option = document.createElement('option');
+    option.value = chapter;
+    option.textContent = chapter;
+    targetElement.appendChild(option);
+  });
+}
+
+async function saveWeeklyPlan() {
+  if (!currentUser) {
+    alert('Please login to save your weekly plan');
+    return;
+  }
+  
+  const startDate = document.getElementById('startDate').value;
+  if (!startDate) {
+    alert('Please select a start date');
+    return;
+  }
+  
+  const planDays = document.querySelectorAll('.plan-day');
+  const planData = {
+    startDate: startDate,
+    days: {},
+    createdAt: new Date().toISOString()
+  };
+  
+  const start = new Date(startDate);
+  
+  planDays.forEach((dayElement, index) => {
+    const dayDate = new Date(start);
+    dayDate.setDate(start.getDate() + index);
+    
+    const dateStr = dayDate.toISOString().split('T')[0];
+    const subjects = dayElement.querySelectorAll('.plan-subject');
+    
+    planData.days[dateStr] = {};
+    
+    subjects.forEach((subjectElement, subIndex) => {
+      const subject = subjectElement.querySelector('.subject-select').value;
+      const option = subjectElement.querySelector('.option-select').value;
+      
+      if (subject) {
+        if (option === 'text') {
+          const text = subjectElement.querySelector('.text-input').value;
+          planData.days[dateStr][`subject${subIndex}`] = {
+            subject: subject,
+            type: 'text',
+            content: text
+          };
+        } else {
+          const selectedChapters = Array.from(subjectElement.querySelector('.chapter-select').selectedOptions)
+            .map(opt => opt.value);
+          planData.days[dateStr][`subject${subIndex}`] = {
+            subject: subject,
+            type: 'chapters',
+            chapters: selectedChapters
+          };
+        }
+      }
+    });
+  });
+  
+  try {
+    const newPlanRef = push(ref(database, `users/${currentUser.uid}/weeklyPlans`));
+    await set(newPlanRef, planData);
+    alert('Weekly plan saved successfully!');
+    loadCurrentPlan();
+  } catch (error) {
+    console.error('Error saving weekly plan:', error);
+    alert('Failed to save weekly plan');
+  }
+}
+
+async function loadCurrentPlan() {
+  if (!currentUser) return;
+  
+  try {
+    const snapshot = await get(ref(database, `users/${currentUser.uid}/weeklyPlans`));
+    if (snapshot.exists()) {
+      const plans = snapshot.val();
+      const currentPlan = document.getElementById('planDisplay');
+      currentPlan.innerHTML = '';
+      
+      // Get the most recent plan
+      const recentPlanKey = Object.keys(plans).pop();
+      const recentPlan = plans[recentPlanKey];
+      
+      Object.entries(recentPlan.days).forEach(([date, subjects]) => {
+        const dayElement = document.createElement('div');
+        dayElement.className = 'plan-day-display';
+        dayElement.innerHTML = `
+          <h3>${new Date(date).toLocaleDateString('en-US', { weekday: 'long' })} (${new Date(date).toLocaleDateString()})</h3>
+          <div class="day-subjects">
+            ${Object.values(subjects).map(subject => `
+              <div class="day-subject">
+                <strong>${subject.subject}</strong>: 
+                ${subject.type === 'text' ? subject.content : subject.chapters.join(', ')}
+              </div>
+            `).join('')}
+          </div>
+        `;
+        
+        currentPlan.appendChild(dayElement);
+      });
+      
+      document.getElementById('currentPlan').style.display = 'block';
+    }
+  } catch (error) {
+    console.error('Error loading current plan:', error);
+  }
+}
+
+async function loadChaptersProgress(subject) {
+  if (!currentUser) return;
+  
+  try {
+    const snapshot = await get(ref(database, `users/${currentUser.uid}/progress/${subject}`));
+    const progressData = snapshot.exists() ? snapshot.val() : {};
+    
+    const chaptersContainer = document.getElementById('chaptersProgress');
+    chaptersContainer.innerHTML = '';
+    
+    let chapters = [];
+    if (subject === 'physics') {
+      chapters = chaptersData.physics;
+    } else if (subject === 'botany') {
+      chapters = chaptersData.botany;
+    } else if (subject === 'zoology') {
+      chapters = chaptersData.zoology;
+    } else if (subject === 'chemistry') {
+      // For chemistry, we need to combine all subcategories
+      chapters = [
+        ...chaptersData.chemistry.physical,
+        ...chaptersData.chemistry.inorganic,
+        ...chaptersData.chemistry.organic
+      ];
+    }
+    
+    chapters.forEach(chapter => {
+      const chapterItem = document.createElement('div');
+      chapterItem.className = 'chapter-item';
+      
+      const chapterProgress = progressData[chapter] || { lectures: false, dpp: false };
+      
+      chapterItem.innerHTML = `
+        <div class="chapter-name">${chapter}</div>
+        <div class="checkbox-container">
+          <input type="checkbox" ${chapterProgress.lectures ? 'checked disabled' : ''} 
+                 data-chapter="${chapter}" data-type="lectures">
+        </div>
+        <div class="checkbox-container">
+          <input type="checkbox" ${chapterProgress.dpp ? 'checked disabled' : ''} 
+                 data-chapter="${chapter}" data-type="dpp">
+        </div>
+      `;
+      
+      // Add event listeners to checkboxes
+      const lecturesCheckbox = chapterItem.querySelector('input[data-type="lectures"]');
+      const dppCheckbox = chapterItem.querySelector('input[data-type="dpp"]');
+      
+      if (lecturesCheckbox && !lecturesCheckbox.disabled) {
+        lecturesCheckbox.addEventListener('change', () => updateChapterProgress(subject, chapter, 'lectures', lecturesCheckbox.checked));
+      }
+      
+      if (dppCheckbox && !dppCheckbox.disabled) {
+        dppCheckbox.addEventListener('change', () => updateChapterProgress(subject, chapter, 'dpp', dppCheckbox.checked));
+      }
+      
+      // Make chapter name clickable for editing
+      const chapterName = chapterItem.querySelector('.chapter-name');
+      chapterName.style.cursor = 'pointer';
+      chapterName.addEventListener('click', () => {
+        lecturesCheckbox.disabled = false;
+        dppCheckbox.disabled = false;
+      });
+      
+      chaptersContainer.appendChild(chapterItem);
+    });
+    
+    // Update progress stats
+    updateProgressStats(subject);
+  } catch (error) {
+    console.error('Error loading chapters progress:', error);
+  }
+}
+
+async function updateChapterProgress(subject, chapter, type, completed) {
+  if (!currentUser) return;
+  
+  try {
+    await update(ref(database, `users/${currentUser.uid}/progress/${subject}/${chapter}`), {
+      [type]: completed
+    });
+    
+    // Reload progress to update UI
+    loadChaptersProgress(subject);
+  } catch (error) {
+    console.error('Error updating chapter progress:', error);
+  }
+}
+
+async function updateProgressStats(subject) {
+  if (!currentUser || !chaptersData) return;
+  
+  try {
+    const snapshot = await get(ref(database, `users/${currentUser.uid}/progress/${subject}`));
+    const progressData = snapshot.exists() ? snapshot.val() : {};
+    
+    let chapters = [];
+    if (subject === 'physics') {
+      chapters = chaptersData.physics;
+    } else if (subject === 'botany') {
+      chapters = chaptersData.botany;
+    } else if (subject === 'zoology') {
+      chapters = chaptersData.zoology;
+    } else if (subject === 'chemistry') {
+      chapters = [
+        ...chaptersData.chemistry.physical,
+        ...chaptersData.chemistry.inorganic,
+        ...chaptersData.chemistry.organic
+      ];
+    }
+    
+    let lecturesCompleted = 0;
+    let dppCompleted = 0;
+    
+    chapters.forEach(chapter => {
+      const progress = progressData[chapter] || { lectures: false, dpp: false };
+      if (progress.lectures) lecturesCompleted++;
+      if (progress.dpp) dppCompleted++;
+    });
+    
+    const totalChapters = chapters.length;
+    const lecturesPercentage = Math.round((lecturesCompleted / totalChapters) * 100);
+    const dppPercentage = Math.round((dppCompleted / totalChapters) * 100);
+    const totalPercentage = Math.round(((lecturesCompleted + dppCompleted) / (totalChapters * 2)) * 100);
+    
+    document.getElementById('lecturesCompleted').textContent = `${lecturesCompleted}/${totalChapters}`;
+    document.getElementById('dppCompleted').textContent = `${dppCompleted}/${totalChapters}`;
+    document.getElementById('totalProgress').textContent = `${totalPercentage}%`;
+    
+    document.getElementById('lecturesPercentage').textContent = `${lecturesPercentage}%`;
+    document.getElementById('dppPercentage').textContent = `${dppPercentage}%`;
+    
+    document.getElementById('lecturesProgressBar').style.width = `${lecturesPercentage}%`;
+    document.getElementById('dppProgressBar').style.width = `${dppPercentage}%`;
+    document.getElementById('totalProgressBar').style.width = `${totalPercentage}%`;
+  } catch (error) {
+    console.error('Error updating progress stats:', error);
+  }
+}
+
+async function resetProgress() {
+  if (!currentUser) return;
+  
+  try {
+    await remove(ref(database, `users/${currentUser.uid}/progress`));
+    alert('Progress reset successfully');
+    loadChaptersProgress(document.querySelector('.tab-btn.active').dataset.subject);
+  } catch (error) {
+    console.error('Error resetting progress:', error);
+    alert('Failed to reset progress');
+  }
+}
+
+async function loadProfileData() {
+  if (!currentUser) return;
+  
+  try {
+    // Load progress data for all subjects
+    const physicsSnapshot = await get(ref(database, `users/${currentUser.uid}/progress/physics`));
+    const chemistrySnapshot = await get(ref(database, `users/${currentUser.uid}/progress/chemistry`));
+    const botanySnapshot = await get(ref(database, `users/${currentUser.uid}/progress/botany`));
+    const zoologySnapshot = await get(ref(database, `users/${currentUser.uid}/progress/zoology`));
+    
+    // Calculate progress percentages
+    const physicsProgress = calculateSubjectProgress(physicsSnapshot, 'physics');
+    const chemistryProgress = calculateSubjectProgress(chemistrySnapshot, 'chemistry');
+    const botanyProgress = calculateSubjectProgress(botanySnapshot, 'botany');
+    const zoologyProgress = calculateSubjectProgress(zoologySnapshot, 'zoology');
+    
+    // Update progress bars
+    document.getElementById('physicsProgress').style.width = `${physicsProgress}%`;
+    document.getElementById('chemistryProgress').style.width = `${chemistryProgress}%`;
+    document.getElementById('botanyProgress').style.width = `${botanyProgress}%`;
+    document.getElementById('zoologyProgress').style.width = `${zoologyProgress}%`;
+    
+    document.getElementById('physicsPercentage').textContent = `${physicsProgress}%`;
+    document.getElementById('chemistryPercentage').textContent = `${chemistryProgress}%`;
+    document.getElementById('botanyPercentage').textContent = `${botanyProgress}%`;
+    document.getElementById('zoologyPercentage').textContent = `${zoologyProgress}%`;
+    
+    // Calculate overall progress
+    const totalProgress = Math.round((physicsProgress + chemistryProgress + botanyProgress + zoologyProgress) / 4);
+    document.getElementById('overallProgress').textContent = `${totalProgress}%`;
+    document.getElementById('overallProgressBar').style.width = `${totalProgress}%`;
+    
+    // Load test data
+    const testsSnapshot = await get(ref(database, `users/${currentUser.uid}/tests`));
+    if (testsSnapshot.exists()) {
+      const tests = testsSnapshot.val();
+      document.getElementById('testsTaken').textContent = Object.keys(tests).length;
+      
+      // Calculate trend (simple implementation)
+      if (Object.keys(tests).length > 1) {
+        const testValues = Object.values(tests);
+        const lastScore = testValues[testValues.length - 1].score;
+        const prevScore = testValues[testValues.length - 2].score;
+        const trend = ((lastScore - prevScore) / prevScore) * 100;
+        
+        const trendElement = document.getElementById('testTrend');
+        trendElement.querySelector('span').textContent = `${Math.abs(trend.toFixed(1))}%`;
+        
+        if (trend > 0) {
+          trendElement.querySelector('i').className = 'fas fa-arrow-up trend-up';
+        } else {
+          trendElement.querySelector('i').className = 'fas fa-arrow-down trend-down';
+        }
+      }
+    }
+    
+    // Load practice data
+    const practiceSnapshot = await get(ref(database, `users/${currentUser.uid}/practiceSessions`));
+    if (practiceSnapshot.exists()) {
+      document.getElementById('practiceSessions').textContent = Object.keys(practiceSnapshot.val()).length;
+    }
+  } catch (error) {
+    console.error('Error loading profile data:', error);
+  }
+}
+
+function calculateSubjectProgress(snapshot, subject) {
+  if (!snapshot.exists()) return 0;
+  
+  const progressData = snapshot.val();
+  let chapters = [];
+  
+  if (subject === 'physics') {
+    chapters = chaptersData.physics;
+  } else if (subject === 'chemistry') {
+    chapters = [
+      ...chaptersData.chemistry.physical,
+      ...chaptersData.chemistry.inorganic,
+      ...chaptersData.chemistry.organic
+    ];
+  } else if (subject === 'botany') {
+    chapters = chaptersData.botany;
+  } else if (subject === 'zoology') {
+    chapters = chaptersData.zoology;
+  }
+  
+  let completed = 0;
+  
+  chapters.forEach(chapter => {
+    const progress = progressData[chapter] || { lectures: false, dpp: false };
+    if (progress.lectures && progress.dpp) completed++;
+  });
+  
+  return Math.round((completed / chapters.length) * 100);
+}
+
+function initializePerformanceChart() {
+  const ctx = document.getElementById('performanceChart').getContext('2d');
+  
+  // This would be replaced with actual data from Firebase
+  const chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Week 6'],
+      datasets: [{
+        label: 'Test Scores',
+        data: [65, 59, 80, 81, 56, 72],
+        borderColor: 'rgb(75, 192, 192)',
+        tension: 0.1
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: {
+          beginAtZero: true
+        }
+      }
+    }
+  });
+  
+  // In a real app, you would load actual test data and update the chart
+}
