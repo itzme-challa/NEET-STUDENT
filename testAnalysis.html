@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Analysis</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/49.2.0/firebase-database.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="logo">Study Tracker</div>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="practice.html">Practice</a>
+      <a href="testAnalysis.html" class="active">Test Analysis</a>
+      <a href="plan.html">Plan</a>
+      <a href="track.html">Track</a>
+      <a href="profile.html" id="profileLink">Profile</a>
+    </div>
+    <div class="hamburger">☰</div>
+  </nav>
+  <div class="container">
+    <h1>Test Analysis</h1>
+    <form id="testForm">
+      <input type="text" id="testName" placeholder="Test Name" required>
+      <input type="testDate" id="testDate" required>
+      <input type="number" id="attemptedQuestions" placeholder="Questions Attempted" required>
+      <input type="number" id="correct" placeholder="Correct Answers" required>
+      <input type="number" id="wrong" placeholder="wrong Answers" required>
+      <input type="number" id="missed" placeholder="Missed Questions" required>
+      <textarea id="testMistakes" placeholder="Mistakes Noted (Optional)"></textarea>
+      <button type="submit">Save Test</button>
+    </form>
+    <h2>Your Tests</h2>
+    <div id="testList"></div>
+    <div id="message"></div>
+  </div>
+</div>
+  <footer class="bottom-nav">
+    <a href="index.html">Home</a>
+    <a href="practice.html">Practice</a>
+    <a href="testAnalysis.html">Test Analysis</a>
+    <a href="plan.html">Plan</a>
+    <a href="track.html">Track</a>
+    <a href="profile.html">Profile</a>
+  </footer>
+</div>
+  <script src="script.js"></script>
+</body>
+</html>
