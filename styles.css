@@ -1,0 +1,154 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  line-height: 1.6;
+  background-color: #f4f4f4;
+}
+
+.navbar {
+  background-color: #333;
+  color: #fff;
+  padding: 10px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.navbar .logo {
+  font-size: 1.5em;
+}
+
+.navbar .nav-links a {
+  color: #fff;
+  text-decoration: none;
+  margin: 0 10px;
+}
+
+.navbar .nav-links a.active {
+  font-weight: bold;
+}
+
+.navbar .hamburger {
+  display: none;
+  font-size: 1.5em;
+  cursor: pointer;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 20px auto;
+  padding: 20px;
+  background: #fff;
+  border-radius: 8px;
+  overflow-y: auto;
+  max-height: calc(100vh - 150px);
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+input, select, textarea, button {
+  padding: 8px;
+  font-size: 1em;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+button {
+  background-color: #333;
+  color: #fff;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #555;
+}
+
+.subject {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.test-item, .plan-item, .chapter-item {
+  padding: 10px;
+  border-bottom: 1px solid #ccc;
+  cursor: pointer;
+}
+
+.test-details {
+  padding: 10px;
+  background: #f9f9f9;
+}
+
+.bottom-nav {
+  background-color: #333;
+  color: #fff;
+  padding: 10px;
+  display: flex;
+  justify-content: space-around;
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+}
+
+.bottom-nav a {
+  color: #fff;
+  text-decoration: none;
+}
+
+.success {
+  color: green;
+}
+
+.error {
+  color: red;
+}
+
+@media (max-width: 768px) {
+  .navbar .nav-links {
+    display: none;
+    flex-direction: column;
+    position: absolute;
+    top: 60px;
+    left: 0;
+    width: 100%;
+    background-color: #333;
+  }
+
+  .navbar .nav-links.open {
+    display: flex;
+  }
+
+  .navbar .nav-links a {
+    padding: 10px;
+    border-bottom: 1px solid #444;
+  }
+
+  .navbar .hamburger {
+    display: block;
+  }
+
+  .container {
+    padding: 10px;
+  }
+
+  .subject {
+    flex-direction: column;
+  }
+}
